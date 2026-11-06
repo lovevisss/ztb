@@ -77,6 +77,19 @@ return [
             'strict' => true,
         ],
 
+        'legacy_purchase' => [
+            'driver' => 'mysql',
+            'host' => env('LEGACY_PURCHASE_HOST', '127.0.0.1'),
+            'port' => env('LEGACY_PURCHASE_PORT', '3306'),
+            'database' => env('LEGACY_PURCHASE_DATABASE', 'zufedfc_purchase'),
+            'username' => env('LEGACY_PURCHASE_USERNAME'),
+            'password' => env('LEGACY_PURCHASE_PASSWORD'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

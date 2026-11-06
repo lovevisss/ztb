@@ -77,6 +77,7 @@ const statusLabel: Record<string, string> = {
             class="mt-4 mr-5 inline-block text-sm text-emerald-800 underline"
             >采购数据大屏 →</Link
         >
+        <Link href="/procurement/legacy-history" class="mt-4 mr-5 inline-block text-sm text-emerald-800 underline">旧系统历史档案 →</Link>
         <Link
             v-if="canManageArchiveRules"
             href="/procurement/archive-rules"

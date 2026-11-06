@@ -16,10 +16,17 @@ class ProcurementApplicationController extends Controller
 {
     public function index(Request $request): Response
     {
+        $account = $request->user()->school_account;
+
         return Inertia::render('procurement/Index', [
             'applications' => ProcurementApplication::query()
                 ->where('applicant_id', $request->user()->id)
                 ->latest()->get(),
+            'legacyApplications' => $account === null ? [] : DB::table('legacy_procurement_records')
+                ->where('source_table', 'zcy_cgsq')
+                ->where('creator_account', $account)
+                ->orderByDesc('occurred_at')
+                ->get(['source_id', 'number', 'title', 'amount_cents', 'status', 'occurred_at']),
         ]);
     }
 

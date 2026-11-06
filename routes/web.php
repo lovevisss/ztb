@@ -3,6 +3,7 @@
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\ApprovalTemplateController;
 use App\Http\Controllers\CentralTenderApplicationController;
+use App\Http\Controllers\LegacyProcurementController;
 use App\Http\Controllers\ProcurementApplicationController;
 use App\Http\Controllers\ProcurementArchiveController;
 use App\Http\Controllers\ProcurementArchiveRuleController;
@@ -50,6 +51,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('procurement/classification-rules', [ProcurementClassificationRuleController::class, 'store'])->name('procurement.classification-rules.store');
     Route::get('procurement/approval-templates', [ApprovalTemplateController::class, 'index'])->name('procurement.approval-templates.index');
     Route::get('procurement/history', [ProcurementHistoryController::class, 'index'])->name('procurement.history.index');
+    Route::get('procurement/legacy-history', [LegacyProcurementController::class, 'index'])->name('procurement.legacy-history.index');
+    Route::get('procurement/legacy-history/{sourceId}', [LegacyProcurementController::class, 'show'])->name('procurement.legacy-history.show');
     Route::get('procurement/statistics', [ProcurementStatisticsController::class, 'index'])->name('procurement.statistics.index');
     Route::get('procurement/statistics/export', [ProcurementStatisticsController::class, 'export'])->name('procurement.statistics.export');
     Route::get('procurement/archive-rules', [ProcurementArchiveRuleController::class, 'index'])->name('procurement.archive-rules.index');
