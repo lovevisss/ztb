@@ -64,6 +64,19 @@ return [
             ]) : [],
         ],
 
+        'school_source' => [
+            'driver' => 'mysql',
+            'host' => env('SCHOOL_DB_HOST', '127.0.0.1'),
+            'port' => env('SCHOOL_DB_PORT', '3306'),
+            'database' => env('SCHOOL_DB_DATABASE', 'middata'),
+            'username' => env('SCHOOL_DB_USERNAME'),
+            'password' => env('SCHOOL_DB_PASSWORD'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

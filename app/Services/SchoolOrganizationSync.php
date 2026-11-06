@@ -12,7 +12,7 @@ class SchoolOrganizationSync
     /** @param array<string, mixed> $feed
      * @return array{departments: int, positions: int, users_created: int, users_updated: int, deactivated: int}
      */
-    public function sync(array $feed, User $actor): array
+    public function sync(array $feed, ?User $actor = null): array
     {
         $this->validateReferences($feed);
 
@@ -80,7 +80,8 @@ class SchoolOrganizationSync
                     ->where('is_active', true)->update(['is_active' => false]);
             }
             DB::table('organization_sync_runs')->insert([
-                'actor_id' => $actor->id, 'complete_snapshot' => $feed['complete_snapshot'],
+                'actor_id' => $actor?->id, 'complete_snapshot' => $feed['complete_snapshot'],
+                'source' => $actor === null ? 'middata' : 'manual', 'status' => 'success',
                 'departments_count' => count($feed['departments']),
                 'positions_count' => count($feed['positions']),
                 'people_count' => count($feed['people']),
