@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Lovevisss\LaravelZufedfcCas\Events\CasAuthenticated;
+use Lovevisss\LaravelZufedfcCas\Events\CasAuthenticationRejected;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,7 +27,21 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
-        Event::listen(CasAuthenticated::class, fn () => session(['cas.authenticated' => true]));
+        Event::listen(CasAuthenticated::class, function (CasAuthenticated $event): void {
+            session(['cas.authenticated' => true]);
+            DB::table('cas_auth_events')->insert([
+                'user_id' => $event->user->getAuthIdentifier(),
+                'account_hash' => hash('sha256', $event->identity->account),
+                'outcome' => 'authenticated', 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        });
+        Event::listen(CasAuthenticationRejected::class, function (CasAuthenticationRejected $event): void {
+            DB::table('cas_auth_events')->insert([
+                'user_id' => null,
+                'account_hash' => hash('sha256', $event->identity->account),
+                'outcome' => 'rejected', 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        });
     }
 
     /**

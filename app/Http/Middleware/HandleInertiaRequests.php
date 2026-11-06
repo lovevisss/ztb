@@ -44,6 +44,8 @@ class HandleInertiaRequests extends Middleware
             ],
             'canManageClassification' => $request->user()?->hasAnyRole(['procurement_manager', 'system_admin']) ?? false,
             'canManageApprovals' => $request->user()?->hasAnyRole(['procurement_manager', 'system_admin']) ?? false,
+            'canManageSchoolUsers' => $request->user()?->hasAnyRole(['system_admin']) ?? false,
+            'flash' => ['status' => $request->session()->get('status')],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

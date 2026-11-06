@@ -23,7 +23,7 @@ class ApprovalTemplateController extends Controller
                 return $template;
             }),
             'departments' => DB::table('departments')->orderBy('name')->get(['id', 'name']),
-            'users' => DB::table('users')->orderBy('name')->get(['id', 'name', 'department_id']),
+            'users' => DB::table('users')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'department_id']),
             'roles' => DB::table('roles')->whereIn('code', ['department_head', 'procurement_manager', 'responsible_department', 'finance', 'school_leader'])->get(['code', 'name']),
         ]);
     }
@@ -41,7 +41,7 @@ class ApprovalTemplateController extends Controller
             'responsible_department' => ['nullable', 'string', 'max:255'],
             'steps' => ['required', 'array', 'min:1', 'max:10'],
             'steps.*.role_code' => ['required', 'exists:roles,code'],
-            'steps.*.assignee_id' => ['nullable', 'exists:users,id'],
+            'steps.*.assignee_id' => ['nullable', Rule::exists('users', 'id')->where('is_active', true)],
         ]);
 
         $hasProcurementReview = false;

@@ -148,6 +148,20 @@ class ExecutionTest extends TestCase
         $this->actingAs($executor)->get(route('procurement.applications.show', $id))->assertSuccessful();
     }
 
+    public function test_inactive_person_cannot_be_assigned_as_executor(): void
+    {
+        $applicant = $this->user($this->department('信息中心'));
+        $manager = $this->user($this->department('采购处'), 'procurement_manager');
+        $executor = $this->user($this->department('后勤处'));
+        $executor->update(['is_active' => false]);
+        $id = $this->application($applicant);
+
+        $this->actingAs($manager)->put(route('procurement.executions.assign', $id), [
+            'executor_id' => $executor->id,
+        ])->assertSessionHasErrors('executor_id');
+        $this->assertDatabaseHas('procurement_applications', ['id' => $id, 'executor_id' => null]);
+    }
+
     public function test_unapproved_or_archived_project_and_unassigned_user_cannot_be_modified(): void
     {
         $department = $this->department('信息中心');

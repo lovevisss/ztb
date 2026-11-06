@@ -11,6 +11,8 @@ import {
     History,
     ChartColumn,
     Archive,
+    Users,
+    Network,
 } from '@lucide/vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
@@ -77,6 +79,19 @@ if (usePage().props.canManageApprovals === true) {
         title: '归档规则',
         href: '/procurement/archive-rules',
         icon: Archive,
+    });
+}
+
+if (usePage().props.canManageSchoolUsers === true) {
+    mainNavItems.push({
+        title: '校内账号',
+        href: '/admin/school-identities',
+        icon: Users,
+    });
+    mainNavItems.push({
+        title: '组织同步',
+        href: '/admin/organization',
+        icon: Network,
     });
 }
 

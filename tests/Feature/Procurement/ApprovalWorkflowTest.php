@@ -65,6 +65,48 @@ class ApprovalWorkflowTest extends TestCase
         $this->assertDatabaseHas('approval_steps', ['id' => $steps[1]->id, 'status' => 'approved']);
     }
 
+    public function test_inactive_school_person_is_not_selected_as_an_approver(): void
+    {
+        $department = $this->department();
+        $applicant = $this->user($department);
+        $head = $this->user($department, 'department_head');
+        $head->update(['is_active' => false]);
+        $this->user($this->department('采购处'), 'procurement_manager');
+
+        $this->actingAs($applicant)->post(route('procurement.applications.store'), [
+            'intent' => 'submit', 'title' => '教学设备采购', 'budget' => 90000,
+            'funding_source' => '教学经费', 'organization_form' => '部门自行组织',
+            'purchase_method' => '询价', 'reason' => '教学需要',
+            'responsible_department' => '教务处', 'is_fixed_asset' => false,
+        ])->assertSessionHasErrors('budget');
+        $this->assertDatabaseCount('approval_steps', 0);
+    }
+
+    public function test_explicit_template_assignee_must_remain_active_at_submission(): void
+    {
+        $department = $this->department();
+        $applicant = $this->user($department);
+        $head = $this->user($department, 'department_head');
+        $manager = $this->user($this->department('采购处'), 'procurement_manager');
+
+        $this->actingAs($manager)->post(route('procurement.approval-templates.store'), [
+            'name' => '指定审批人', 'purchase_type' => 'self_purchase',
+            'min_budget_yuan' => 0, 'steps' => [
+                ['role_code' => 'department_head', 'assignee_id' => $head->id],
+                ['role_code' => 'procurement_manager', 'assignee_id' => $manager->id],
+            ],
+        ])->assertSessionHasNoErrors();
+        $head->update(['is_active' => false]);
+
+        $this->actingAs($applicant)->post(route('procurement.applications.store'), [
+            'intent' => 'submit', 'title' => '教学设备采购', 'budget' => 90000,
+            'funding_source' => '教学经费', 'organization_form' => '部门自行组织',
+            'purchase_method' => '询价', 'reason' => '教学需要',
+            'responsible_department' => '教务处', 'is_fixed_asset' => false,
+        ])->assertSessionHasErrors('budget');
+        $this->assertDatabaseCount('approval_steps', 0);
+    }
+
     public function test_return_preserves_history_and_resubmission_starts_a_new_attempt(): void
     {
         $department = $this->department();
@@ -137,6 +179,11 @@ class ApprovalWorkflowTest extends TestCase
         $stepId = DB::table('approval_steps')->where('application_id', $id)->where('position', 1)->value('id');
         $originalAssignee = DB::table('approval_steps')->where('id', $stepId)->value('assignee_id');
         $replacement = $originalAssignee === $oldHead->id ? $newHead : $oldHead;
+
+        $inactive = $this->user($department, 'department_head');
+        $inactive->update(['is_active' => false]);
+        $this->actingAs($manager)->put(route('procurement.approvals.reassign', $stepId), ['assignee_id' => $inactive->id])
+            ->assertSessionHasErrors('assignee_id');
 
         $this->actingAs($applicant)->put(route('procurement.approvals.reassign', $stepId), ['assignee_id' => $replacement->id])->assertForbidden();
         $this->actingAs($manager)->put(route('procurement.approvals.reassign', $stepId), ['assignee_id' => $replacement->id])->assertRedirect();

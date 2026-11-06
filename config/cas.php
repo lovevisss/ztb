@@ -1,5 +1,7 @@
 <?php
 
+use App\Auth\CasIdentityResolver;
+
 return [
     'base_url' => env('CAS_BASE_URL', 'https://cas.paas.zufedfc.edu.cn/cas'),
     'login_path' => env('CAS_LOGIN_PATH', '/login'),
@@ -13,7 +15,7 @@ return [
     'timeout' => (int) env('CAS_TIMEOUT', 8),
     'routes_enabled' => false,
     'route_prefix' => env('CAS_ROUTE_PREFIX', 'auth/cas'),
-    'identity_resolver' => env('CAS_IDENTITY_RESOLVER', App\Auth\CasIdentityResolver::class),
+    'identity_resolver' => env('CAS_IDENTITY_RESOLVER', CasIdentityResolver::class),
     'redirect_after_login' => env('CAS_REDIRECT_AFTER_LOGIN', '/dashboard'),
     'redirect_when_denied' => env('CAS_REDIRECT_WHEN_DENIED', '/access-denied'),
     'slo_cache_store' => env('CAS_SLO_CACHE_STORE'),

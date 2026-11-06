@@ -39,7 +39,7 @@ class ApprovalWorkflow
         $resolved = [];
         foreach ($templateSteps as $step) {
             $assigneeId = $step->assignee_id ?? $this->resolveAssignee($step->role_code, $application);
-            if ($assigneeId === null) {
+            if ($assigneeId === null || ! DB::table('users')->where('id', $assigneeId)->where('is_active', true)->exists()) {
                 throw ValidationException::withMessages(['budget' => "审批岗位 {$step->role_code} 尚无匹配人员，请联系管理员。"]);
             }
             $resolved[] = ['position' => $step->position, 'role_code' => $step->role_code, 'assignee_id' => $assigneeId];
@@ -82,7 +82,8 @@ class ApprovalWorkflow
         $query = DB::table('users')
             ->join('role_user', 'role_user.user_id', '=', 'users.id')
             ->join('roles', 'roles.id', '=', 'role_user.role_id')
-            ->where('roles.code', $roleCode);
+            ->where('roles.code', $roleCode)
+            ->where('users.is_active', true);
 
         if ($roleCode === 'department_head') {
             $query->where('users.department_id', $application->department_id);

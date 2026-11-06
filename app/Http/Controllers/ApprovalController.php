@@ -8,6 +8,7 @@ use App\Services\ProcurementAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -53,7 +54,7 @@ class ApprovalController extends Controller
             'currentUserId' => $request->user()->id,
             'canManageApprovals' => $request->user()->hasAnyRole(['procurement_manager', 'system_admin']),
             'users' => $request->user()->hasAnyRole(['procurement_manager', 'system_admin'])
-                ? DB::table('users')->orderBy('name')->get(['id', 'name']) : [],
+                ? DB::table('users')->where('is_active', true)->orderBy('name')->get(['id', 'name']) : [],
         ]);
     }
 
@@ -110,7 +111,7 @@ class ApprovalController extends Controller
     public function reassign(Request $request, ApprovalStep $step): RedirectResponse
     {
         abort_unless($request->user()->hasAnyRole(['procurement_manager', 'system_admin']), 403);
-        $data = $request->validate(['assignee_id' => ['required', 'integer', 'exists:users,id']]);
+        $data = $request->validate(['assignee_id' => ['required', 'integer', Rule::exists('users', 'id')->where('is_active', true)]]);
 
         DB::transaction(function () use ($request, $step, $data) {
             $locked = ApprovalStep::query()->lockForUpdate()->findOrFail($step->id);

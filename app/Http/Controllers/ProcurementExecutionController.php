@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
@@ -95,7 +96,7 @@ class ProcurementExecutionController extends Controller
     {
         abort_unless($request->user()->hasAnyRole(['procurement_manager', 'system_admin']), 403);
         abort_unless(in_array($application->status, ['approved', 'executing', 'execution_completed'], true), 403);
-        $data = $request->validate(['executor_id' => ['required', 'integer', 'exists:users,id']]);
+        $data = $request->validate(['executor_id' => ['required', 'integer', Rule::exists('users', 'id')->where('is_active', true)]]);
 
         DB::transaction(function () use ($request, $application, $data) {
             $locked = ProcurementApplication::query()->lockForUpdate()->findOrFail($application->id);

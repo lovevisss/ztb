@@ -11,24 +11,31 @@ use App\Http\Controllers\ProcurementClassificationRuleController;
 use App\Http\Controllers\ProcurementExecutionController;
 use App\Http\Controllers\ProcurementHistoryController;
 use App\Http\Controllers\ProcurementStatisticsController;
+use App\Http\Controllers\SchoolCasCallbackController;
 use App\Http\Controllers\SchoolCasLoginController;
+use App\Http\Controllers\SchoolIdentityController;
+use App\Http\Controllers\SchoolOrganizationController;
 use App\Http\Middleware\EnsureCasConfigured;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
-use Lovevisss\LaravelZufedfcCas\Http\Controllers\CallbackController as CasCallbackController;
+use Illuminate\Support\Facades\Route;
 use Lovevisss\LaravelZufedfcCas\Http\Controllers\LogoutController as CasLogoutController;
 use Lovevisss\LaravelZufedfcCas\Http\Controllers\SloController as CasSloController;
 
 Route::inertia('/', 'Welcome')->name('home');
 Route::inertia('access-denied', 'auth/AccessDenied')->name('access-denied');
 Route::get('auth/cas/login', SchoolCasLoginController::class)->middleware(EnsureCasConfigured::class)->name('cas.login');
-Route::get('auth/cas/callback', CasCallbackController::class)->middleware(EnsureCasConfigured::class)->name('cas.callback');
+Route::get('auth/cas/callback', SchoolCasCallbackController::class)->middleware(EnsureCasConfigured::class)->name('cas.callback');
 Route::post('auth/cas/logout', CasLogoutController::class)->middleware(EnsureCasConfigured::class)->name('cas.logout');
 Route::match(['get', 'post'], 'auth/cas/slo', CasSloController::class)
     ->withoutMiddleware(PreventRequestForgery::class)->name('cas.slo');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+    Route::get('admin/school-identities', [SchoolIdentityController::class, 'index'])->name('school-identities.index');
+    Route::put('admin/school-identities/{user}', [SchoolIdentityController::class, 'update'])->name('school-identities.update');
+    Route::get('admin/organization', [SchoolOrganizationController::class, 'index'])->name('organization.index');
+    Route::post('admin/organization/sync', [SchoolOrganizationController::class, 'sync'])->name('organization.sync');
+    Route::put('admin/organization/positions/{code}/roles', [SchoolOrganizationController::class, 'updatePositionRoles'])->name('organization.position-roles.update');
     Route::get('procurement/applications', [ProcurementApplicationController::class, 'index'])->name('procurement.applications.index');
     Route::get('procurement/applications/create', [ProcurementApplicationController::class, 'create'])->name('procurement.applications.create');
     Route::post('procurement/applications', [ProcurementApplicationController::class, 'store'])->name('procurement.applications.store');

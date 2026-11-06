@@ -6,6 +6,7 @@ use App\Auth\CasIdentityResolver;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Lovevisss\LaravelZufedfcCas\Data\CasIdentity;
 use Lovevisss\LaravelZufedfcCas\Testing\CasResponse;
@@ -25,7 +26,7 @@ class CasAuthenticationTest extends TestCase
 
     private function schoolUser(string $account = '007', bool $active = true): User
     {
-        $department = \Illuminate\Support\Facades\DB::table('departments')->insertGetId([
+        $department = DB::table('departments')->insertGetId([
             'name' => '信息中心', 'created_at' => now(), 'updated_at' => now(),
         ]);
 
@@ -88,6 +89,9 @@ class CasAuthenticationTest extends TestCase
         });
         $this->assertNotNull(Cache::get('cas:slo:'.hash('sha256', 'ST-test-007')));
         $this->assertNull(Cache::get('cas:slo:ST-test-007'));
+        $this->assertDatabaseHas('cas_auth_events', [
+            'user_id' => $user->id, 'account_hash' => hash('sha256', '007'), 'outcome' => 'authenticated',
+        ]);
     }
 
     public function test_missing_inactive_and_fuzzy_accounts_are_denied(): void
@@ -97,11 +101,14 @@ class CasAuthenticationTest extends TestCase
         $this->assertNull($resolver->resolve(new CasIdentity('007', '007')));
         $this->assertNull($resolver->resolve(new CasIdentity('7', '7')));
         $this->assertNull($resolver->resolve(new CasIdentity('missing', 'missing')));
+        User::factory()->create(['school_account' => '009', 'department_id' => null]);
+        $this->assertNull($resolver->resolve(new CasIdentity('009', '009')));
 
         Http::fake(['cas.paas.zufedfc.edu.cn/*' => Http::response(CasResponse::success('007'), 200)]);
         $this->get('/auth/cas/callback?ticket=ST-inactive')->assertRedirect('/access-denied');
         $this->assertGuest();
         $this->get('/access-denied')->assertSuccessful();
+        $this->assertDatabaseHas('cas_auth_events', ['account_hash' => hash('sha256', '007'), 'outcome' => 'rejected']);
     }
 
     public function test_invalid_ticket_and_unsafe_xml_never_authenticate(): void
@@ -152,6 +159,20 @@ class CasAuthenticationTest extends TestCase
         $user->update(['is_active' => false]);
 
         $this->get('/dashboard')->assertRedirect('/access-denied');
+        $this->assertGuest();
+    }
+
+    public function test_denied_cas_identity_clears_a_previous_authenticated_session(): void
+    {
+        $active = $this->schoolUser('007');
+        $this->schoolUser('008', false);
+        Http::fakeSequence()
+            ->push(CasResponse::success('007'))
+            ->push(CasResponse::success('008'));
+
+        $this->get('/auth/cas/callback?ticket=ST-active')->assertRedirect('/dashboard');
+        $this->assertAuthenticatedAs($active);
+        $this->get('/auth/cas/callback?ticket=ST-denied')->assertRedirect('/access-denied');
         $this->assertGuest();
     }
 }

@@ -39,9 +39,18 @@ defineProps<{
 
     <PasskeyVerify />
 
-    <a v-if="casConfigured" href="/auth/cas/login" class="mb-6 flex w-full items-center justify-center rounded-md bg-emerald-800 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-900">使用学校统一身份认证登录</a>
-    <p v-else class="mb-5 text-center text-sm text-amber-800">学校统一认证回调地址尚未配置</p>
-    <p class="mb-4 text-center text-xs text-muted-foreground">本地账号用于对接过渡与测试</p>
+    <a
+        v-if="casConfigured"
+        href="/auth/cas/login"
+        class="mb-6 flex w-full items-center justify-center rounded-md bg-emerald-800 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-900"
+        >使用学校统一身份认证登录</a
+    >
+    <p v-else class="mb-5 text-center text-sm text-amber-800">
+        学校统一认证回调地址尚未配置
+    </p>
+    <p class="mb-4 text-center text-xs text-muted-foreground">
+        本地账号用于对接过渡与测试
+    </p>
 
     <Form
         v-bind="store.form()"
