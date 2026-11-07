@@ -3,7 +3,7 @@ import { wayfinder } from '@laravel/vite-plugin-wayfinder';
 import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import laravel from 'laravel-vite-plugin';
-import { bunny } from 'laravel-vite-plugin/fonts';
+import { local } from 'laravel-vite-plugin/fonts';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 
 export default defineConfig({
@@ -12,8 +12,13 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.ts'],
             refresh: true,
             fonts: [
-                bunny('Inter', {
-                    weights: [400, 500, 600],
+                local('Inter', {
+                    variants: [
+                        { src: 'resources/fonts/inter-400-normal.woff2', weight: 400 },
+                        { src: 'resources/fonts/inter-500-normal.woff2', weight: 500 },
+                        { src: 'resources/fonts/inter-600-normal.woff2', weight: 600 },
+                    ],
+                    optimizedFallbacks: false,
                 }),
             ],
         }),
