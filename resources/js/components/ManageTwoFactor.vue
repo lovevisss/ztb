@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
-import { ShieldCheck } from '@lucide/vue';
+import { IconShieldCheck as ShieldCheck } from '@tabler/icons-vue';
 import { onUnmounted, ref } from 'vue';
 import Heading from '@/components/Heading.vue';
 import TwoFactorRecoveryCodes from '@/components/TwoFactorRecoveryCodes.vue';
@@ -46,7 +46,11 @@ onUnmounted(() => clearTwoFactorAuthData());
             </p>
 
             <div>
-                <Button v-if="hasSetupData" @click="showSetupModal = true">
+                <Button
+                    v-if="hasSetupData"
+                    variant="outline"
+                    @click="showSetupModal = true"
+                >
                     <ShieldCheck />Continue setup
                 </Button>
                 <Form
@@ -55,7 +59,11 @@ onUnmounted(() => clearTwoFactorAuthData());
                     @success="showSetupModal = true"
                     #default="{ processing }"
                 >
-                    <Button type="submit" :disabled="processing">
+                    <Button
+                        type="submit"
+                        variant="outline"
+                        :disabled="processing"
+                    >
                         Enable 2FA
                     </Button>
                 </Form>

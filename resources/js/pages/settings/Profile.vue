@@ -16,7 +16,7 @@ defineOptions({
     layout: {
         breadcrumbs: [
             {
-                title: 'Profile settings',
+                title: '个人资料',
                 href: edit(),
             },
         ],
@@ -28,74 +28,88 @@ const user = computed(() => page.props.auth.user);
 </script>
 
 <template>
-    <Head title="Profile settings" />
+    <Head title="个人资料" />
 
-    <h1 class="sr-only">Profile settings</h1>
+    <h1 class="sr-only">个人资料</h1>
 
-    <div class="flex flex-col space-y-6">
+    <div class="flex flex-col space-y-[var(--brand-space-24)]">
         <Heading
             variant="small"
-            title="Profile"
-            description="Update your name and email address"
+            title="个人资料"
+            description="更新姓名与电子邮箱"
         />
 
         <Form
             v-bind="ProfileController.update.form()"
-            class="space-y-6"
+            class="space-y-[var(--brand-space-24)]"
             v-slot="{ errors, processing }"
         >
-            <div class="grid gap-2">
-                <Label for="name">Name</Label>
+            <div class="grid gap-[var(--brand-space-8)]">
+                <Label for="name"
+                    >姓名
+                    <span class="text-[var(--brand-danger)]">*</span></Label
+                >
                 <Input
                     id="name"
-                    class="mt-1 block w-full"
+                    class="mt-[var(--brand-space-8)] block w-full"
                     name="name"
                     :default-value="user.name"
                     required
                     autocomplete="name"
-                    placeholder="Full name"
+                    placeholder="请输入姓名"
                 />
-                <InputError class="mt-2" :message="errors.name" />
+                <InputError
+                    class="mt-[var(--brand-space-8)]"
+                    :message="errors.name"
+                />
             </div>
 
-            <div class="grid gap-2">
-                <Label for="email">Email address</Label>
+            <div class="grid gap-[var(--brand-space-8)]">
+                <Label for="email"
+                    >电子邮箱
+                    <span class="text-[var(--brand-danger)]">*</span></Label
+                >
                 <Input
                     id="email"
                     type="email"
-                    class="mt-1 block w-full"
+                    class="mt-[var(--brand-space-8)] block w-full"
                     name="email"
                     :default-value="user.email"
                     required
                     autocomplete="username"
-                    placeholder="Email address"
+                    placeholder="请输入电子邮箱"
                 />
-                <InputError class="mt-2" :message="errors.email" />
+                <InputError
+                    class="mt-[var(--brand-space-8)]"
+                    :message="errors.email"
+                />
             </div>
 
             <div v-if="page.props.mustVerifyEmail && !user.email_verified_at">
-                <p class="-mt-4 text-sm text-muted-foreground">
-                    Your email address is unverified.
+                <p
+                    class="-mt-[var(--brand-space-16)] text-sm text-muted-foreground"
+                >
+                    电子邮箱尚未验证。
                     <Link
                         :href="send()"
                         as="button"
-                        class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                        class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current!"
                     >
-                        Click here to re-send the verification email.
+                        点击重新发送验证邮件。
                     </Link>
                 </p>
 
                 <div
                     v-if="page.props.status === 'verification-link-sent'"
-                    class="mt-2 text-sm font-medium text-green-600"
+                    class="mt-[var(--brand-space-8)] text-sm font-medium text-[var(--brand-success)]"
                 >
-                    A new verification link has been sent to your email address.
+                    新的验证链接已发送至你的邮箱。
                 </div>
             </div>
 
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-[var(--brand-space-16)]">
                 <Button :disabled="processing" data-test="update-profile-button"
-                    >Save</Button
+                    >保存</Button
                 >
             </div>
         </Form>

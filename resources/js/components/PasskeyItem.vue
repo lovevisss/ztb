@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { KeyRound, Trash2 } from '@lucide/vue';
+import { IconKey as KeyRound, IconTrash as Trash2 } from '@tabler/icons-vue';
 import { ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import {

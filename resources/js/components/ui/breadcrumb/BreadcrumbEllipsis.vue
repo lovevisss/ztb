@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { HTMLAttributes } from "vue"
-import { MoreHorizontal } from "@lucide/vue"
+import { IconDots as MoreHorizontal } from '@tabler/icons-vue'
 import { cn } from "@/lib/utils"
 
 const props = defineProps<{

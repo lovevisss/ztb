@@ -36,45 +36,68 @@ function find() {
 
 <template>
     <Head title="校内账号映射" />
-    <main class="mx-auto max-w-6xl px-5 py-8 md:px-10 md:py-12">
-        <header class="border-b border-slate-200 pb-7">
-            <p class="text-xs font-semibold tracking-[0.25em] text-emerald-700">
+    <main
+        class="mx-auto max-w-6xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
+    >
+        <header
+            class="border-b border-[var(--brand-border)] pb-[var(--brand-space-32)]"
+        >
+            <p
+                class="text-xs font-semibold tracking-[0.25em] text-[var(--brand-primary)]"
+            >
                 IDENTITY / 人员管理
             </p>
-            <h1 class="mt-2 font-serif text-3xl font-semibold text-slate-900">
+            <h1
+                class="mt-[var(--brand-space-8)] font-sans text-3xl font-semibold text-[var(--brand-title)]"
+            >
                 校内账号映射
             </h1>
-            <p class="mt-3 text-sm text-slate-500">
+            <p
+                class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
+            >
                 将 CAS
                 返回的校内账号精确关联到已有在职人员；一个账号只能对应一人。
             </p>
         </header>
-        <form class="mt-7 flex max-w-lg gap-3" @submit.prevent="find">
+        <form
+            class="mt-[var(--brand-space-32)] flex max-w-lg gap-[var(--brand-space-16)]"
+            @submit.prevent="find"
+        >
             <el-input
                 v-model="search.search"
                 clearable
                 placeholder="姓名、邮箱或校内账号"
-            /><el-button native-type="submit" type="primary">搜索</el-button>
+            /><el-button native-type="submit">搜索</el-button>
         </form>
-        <div class="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_330px]">
+        <div
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-24)] lg:grid-cols-[minmax(0,1fr)_330px]"
+        >
             <section
-                class="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm"
+                class="overflow-x-auto rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] shadow-sm"
             >
                 <table class="w-full min-w-[560px] text-left text-sm">
-                    <thead class="bg-slate-50 text-xs text-slate-500">
+                    <thead
+                        class="bg-[var(--brand-page)] text-xs text-[var(--brand-muted)]"
+                    >
                         <tr>
-                            <th class="px-5 py-4">人员</th>
+                            <th
+                                class="px-[var(--brand-space-24)] py-[var(--brand-space-16)]"
+                            >
+                                人员
+                            </th>
                             <th>部门</th>
                             <th>校内账号</th>
                             <th>状态</th>
                             <th>操作</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-[var(--brand-border)]">
                         <tr v-for="user in users.data" :key="user.id">
-                            <td class="px-5 py-4">
+                            <td
+                                class="px-[var(--brand-space-24)] py-[var(--brand-space-16)]"
+                            >
                                 <strong>{{ user.name }}</strong>
-                                <p class="text-xs text-slate-400">
+                                <p class="text-xs text-[var(--brand-muted)]">
                                     {{ user.email }}
                                 </p>
                             </td>
@@ -93,59 +116,66 @@ function find() {
                 </table>
                 <p
                     v-if="!users.data.length"
-                    class="px-5 py-12 text-center text-sm text-slate-400"
+                    class="px-[var(--brand-space-24)] py-[var(--brand-space-32)] text-center text-sm text-[var(--brand-muted)]"
                 >
                     没有匹配人员
                 </p>
             </section>
             <aside
-                class="h-fit rounded-lg border border-emerald-200 bg-emerald-50 p-6"
+                class="h-fit rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] bg-[var(--brand-primary-light)] p-[var(--brand-space-24)]"
             >
-                <h2 class="font-serif text-xl text-slate-900">
+                <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     {{ selected ? `关联 ${selected.name}` : '选择人员' }}
                 </h2>
                 <template v-if="selected"
-                    ><label class="mt-5 block text-sm text-slate-700"
+                    ><label
+                        class="mt-[var(--brand-space-24)] block text-sm text-[var(--brand-body)]"
                         >CAS 校内账号<el-input
                             v-model="mapping.school_account"
-                            class="mt-2"
+                            class="mt-[var(--brand-space-8)]"
                             placeholder="与 CAS user 完全一致"
                     /></label>
                     <p
                         v-if="mapping.errors.school_account"
-                        class="mt-1 text-xs text-red-700"
+                        class="mt-[var(--brand-space-8)] text-xs text-[var(--brand-danger)]"
                     >
                         {{ mapping.errors.school_account }}
                     </p>
                     <label
-                        class="mt-5 flex items-center gap-3 text-sm text-slate-700"
+                        class="mt-[var(--brand-space-24)] flex items-center gap-[var(--brand-space-16)] text-sm text-[var(--brand-body)]"
                         >在职可访问
                         <el-switch v-model="mapping.is_active" /></label
                     ><el-button
-                        class="mt-6"
+                        class="mt-[var(--brand-space-24)]"
                         type="primary"
                         :loading="mapping.processing"
                         @click="save"
                         >保存映射</el-button
                     ></template
                 >
-                <p v-else class="mt-4 text-sm leading-7 text-slate-600">
+                <p
+                    v-else
+                    class="mt-[var(--brand-space-16)] text-sm leading-7 text-[var(--brand-body)]"
+                >
                     从左侧选择人员后设置账号与在职状态。人员需要已关联部门，才能通过
                     CAS 登录。
                 </p>
             </aside>
         </div>
-        <nav v-if="users.links.length > 3" class="mt-6 flex gap-2">
+        <nav
+            v-if="users.links.length > 3"
+            class="mt-[var(--brand-space-24)] flex gap-[var(--brand-space-8)]"
+        >
             <Link
                 v-for="(link, index) in users.links"
                 :key="index"
                 v-show="link.url"
                 :href="link.url ?? '#'"
-                class="rounded border px-3 py-1 text-sm"
+                class="rounded border px-[var(--brand-space-16)] py-[var(--brand-space-8)] text-sm"
                 :class="
                     link.active
-                        ? 'border-emerald-700 bg-emerald-50 text-emerald-800'
-                        : 'border-slate-200 text-slate-600'
+                        ? 'border-[var(--brand-primary)] bg-[var(--brand-primary-light)] text-[var(--brand-primary)]'
+                        : 'border-[var(--brand-border)] text-[var(--brand-body)]'
                 "
                 >{{
                     link.label.replace('&laquo;', '«').replace('&raquo;', '»')

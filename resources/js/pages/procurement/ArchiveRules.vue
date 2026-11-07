@@ -51,33 +51,43 @@ function save(applicationForm: string) {
 
 <template>
     <Head title="归档材料规则" />
-    <main class="mx-auto max-w-5xl px-5 py-8 md:px-10 md:py-12">
+    <main
+        class="mx-auto max-w-5xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
+    >
         <Link
             href="/procurement/history"
-            class="text-sm text-emerald-800 hover:underline"
+            class="text-sm text-[var(--brand-primary)] hover:underline"
             >← 返回项目检索</Link
         >
-        <header class="mt-7 border-b border-slate-200 pb-7">
-            <h1 class="font-serif text-3xl font-semibold text-slate-900">
+        <header
+            class="mt-[var(--brand-space-32)] border-b border-[var(--brand-border)] pb-[var(--brand-space-32)]"
+        >
+            <h1
+                class="font-sans text-3xl font-semibold text-[var(--brand-title)]"
+            >
                 归档材料规则
             </h1>
-            <p class="mt-3 text-sm text-slate-500">
+            <p
+                class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
+            >
                 按采购表单类型设置必需材料。新规则只影响尚未归档的项目。
             </p>
         </header>
-        <div class="mt-8 grid gap-6 md:grid-cols-2">
+        <div
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-24)] md:grid-cols-2"
+        >
             <section
                 v-for="item in forms"
                 :key="item.code"
-                class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
-                <h2 class="font-serif text-xl text-slate-900">
+                <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     {{ item.label }}
                 </h2>
                 <el-checkbox-group
                     v-model="selections[item.code]"
                     :disabled="!canEdit"
-                    class="mt-5 flex flex-col gap-3"
+                    class="mt-[var(--brand-space-24)] flex flex-col gap-[var(--brand-space-16)]"
                 >
                     <el-checkbox
                         v-for="kind in kinds"
@@ -92,13 +102,13 @@ function save(applicationForm: string) {
                         form.errors.required_kinds &&
                         form.application_form === item.code
                     "
-                    class="mt-3 text-xs text-red-700"
+                    class="mt-[var(--brand-space-16)] text-xs text-[var(--brand-danger)]"
                 >
                     {{ form.errors.required_kinds }}
                 </p>
                 <el-button
                     v-if="canEdit"
-                    class="mt-6"
+                    class="mt-[var(--brand-space-24)]"
                     type="primary"
                     :loading="form.processing"
                     @click="save(item.code)"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { KeyRound } from '@lucide/vue';
+import { IconKey as KeyRound } from '@tabler/icons-vue';
 import type { Passkey } from '@/types/auth';
 import Heading from '@/components/Heading.vue';
 import PasskeyItem from '@/components/PasskeyItem.vue';

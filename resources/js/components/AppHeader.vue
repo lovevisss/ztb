@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from '@lucide/vue';
+import {
+    IconBook as BookOpen,
+    IconFolder as Folder,
+    IconLayoutGrid as LayoutGrid,
+    IconMenu2 as Menu,
+    IconSearch as Search,
+} from '@tabler/icons-vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';

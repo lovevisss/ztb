@@ -50,32 +50,44 @@ function save() {
 
 <template>
     <Head title="审批流程配置" />
-    <main class="mx-auto w-full max-w-6xl px-5 py-8 md:px-10 md:py-12">
-        <header class="border-b border-slate-200 pb-7">
+    <main
+        class="mx-auto w-full max-w-6xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
+    >
+        <header
+            class="border-b border-[var(--brand-border)] pb-[var(--brand-space-32)]"
+        >
             <p
-                class="mb-2 text-xs font-semibold tracking-[0.28em] text-emerald-700"
+                class="mb-[var(--brand-space-8)] text-xs font-semibold tracking-[0.28em] text-[var(--brand-primary)]"
             >
                 WORKFLOW / 采购管理
             </p>
             <h1
-                class="font-serif text-3xl font-semibold text-slate-900 md:text-4xl"
+                class="font-sans text-3xl font-semibold text-[var(--brand-title)] md:text-4xl"
             >
                 审批流程配置
             </h1>
-            <p class="mt-3 text-sm text-slate-500">
+            <p
+                class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
+            >
                 按采购类型、金额和部门配置顺序审批。新版本仅影响之后提交的项目。
             </p>
         </header>
-        <div class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_390px]">
-            <section class="space-y-3">
+        <div
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-32)] lg:grid-cols-[minmax(0,1fr)_390px]"
+        >
+            <section class="space-y-[var(--brand-space-16)]">
                 <article
                     v-for="template in templates"
                     :key="template.id"
-                    class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
                 >
-                    <div class="flex items-start justify-between gap-4">
+                    <div
+                        class="flex items-start justify-between gap-[var(--brand-space-16)]"
+                    >
                         <div>
-                            <p class="text-xs font-semibold text-emerald-700">
+                            <p
+                                class="text-xs font-semibold text-[var(--brand-primary)]"
+                            >
                                 版本 {{ template.version }} ·
                                 {{
                                     template.purchase_type === 'central_tender'
@@ -83,11 +95,13 @@ function save() {
                                         : '部门自行采购'
                                 }}
                             </p>
-                            <h2 class="mt-1 font-serif text-lg text-slate-900">
+                            <h2
+                                class="mt-[var(--brand-space-8)] font-sans text-lg text-[var(--brand-title)]"
+                            >
                                 {{ template.name }}
                             </h2>
                         </div>
-                        <span class="text-xs text-slate-500"
+                        <span class="text-xs text-[var(--brand-muted)]"
                             >¥{{
                                 (
                                     template.min_budget_cents / 100
@@ -96,7 +110,9 @@ function save() {
                             起</span
                         >
                     </div>
-                    <p class="mt-3 text-xs text-slate-500">
+                    <p
+                        class="mt-[var(--brand-space-16)] text-xs text-[var(--brand-muted)]"
+                    >
                         {{
                             template.steps
                                 .map(
@@ -112,10 +128,15 @@ function save() {
                 </article>
             </section>
             <section
-                class="h-fit rounded-lg border border-emerald-200 bg-emerald-50/60 p-6 lg:sticky lg:top-8"
+                class="h-fit rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] bg-[var(--brand-primary-light)]/60 p-[var(--brand-space-24)] lg:sticky lg:top-8"
             >
-                <h2 class="font-serif text-xl text-slate-900">新增流程版本</h2>
-                <form class="mt-5 space-y-4" @submit.prevent="save">
+                <h2 class="font-sans text-xl text-[var(--brand-title)]">
+                    新增流程版本
+                </h2>
+                <form
+                    class="mt-[var(--brand-space-24)] space-y-[var(--brand-space-16)]"
+                    @submit.prevent="save"
+                >
                     <label class="block"
                         ><span class="field-label">流程名称</span
                         ><el-input
@@ -134,7 +155,7 @@ function save() {
                                 label="统一招标"
                                 value="central_tender" /></el-select
                     ></label>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-2 gap-[var(--brand-space-16)]">
                         <label
                             ><span class="field-label">最低预算（元）</span
                             ><el-input
@@ -180,20 +201,22 @@ function save() {
                             v-model="form.responsible_department"
                             placeholder="留空表示不限"
                     /></label>
-                    <div class="border-t border-emerald-200 pt-4">
+                    <div
+                        class="border-t border-[var(--brand-primary)] pt-[var(--brand-space-16)]"
+                    >
                         <p class="field-label">审批步骤</p>
                         <div
                             v-for="(step, index) in form.steps"
                             :key="index"
-                            class="mt-3 rounded-md bg-white p-3"
+                            class="mt-[var(--brand-space-16)] rounded-[var(--brand-radius-md)] bg-[var(--brand-card)] p-[var(--brand-space-16)]"
                         >
                             <div class="flex items-center justify-between">
                                 <span
-                                    class="text-xs font-semibold text-slate-500"
+                                    class="text-xs font-semibold text-[var(--brand-muted)]"
                                     >第 {{ index + 1 }} 步</span
                                 ><button
                                     type="button"
-                                    class="text-xs text-red-700"
+                                    class="text-xs text-[var(--brand-danger)]"
                                     @click="removeStep(index)"
                                 >
                                     移除
@@ -201,7 +224,7 @@ function save() {
                             </div>
                             <el-select
                                 v-model="step.role_code"
-                                class="mt-2 w-full"
+                                class="mt-[var(--brand-space-8)] w-full"
                                 ><el-option
                                     v-for="role in roles"
                                     :key="role.code"
@@ -212,7 +235,7 @@ function save() {
                                 clearable
                                 filterable
                                 placeholder="按岗位自动匹配"
-                                class="mt-2 w-full"
+                                class="mt-[var(--brand-space-8)] w-full"
                                 ><el-option
                                     v-for="user in users"
                                     :key="user.id"
@@ -222,7 +245,7 @@ function save() {
                         </div>
                         <button
                             type="button"
-                            class="mt-3 text-sm font-medium text-emerald-800"
+                            class="mt-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-primary)]"
                             @click="addStep"
                         >
                             ＋ 增加步骤</button
@@ -249,12 +272,12 @@ function save() {
     margin-bottom: 0.5rem;
     font-size: 0.875rem;
     font-weight: 600;
-    color: #334155;
+    color: var(--brand-body);
 }
 .field-error {
     display: block;
     margin-top: 0.35rem;
     font-size: 0.75rem;
-    color: #b91c1c;
+    color: var(--brand-danger);
 }
 </style>

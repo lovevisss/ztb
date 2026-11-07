@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CheckboxRootEmits, CheckboxRootProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import { Check } from "@lucide/vue"
+import { IconCheck as Check } from '@tabler/icons-vue'
 import { reactiveOmit } from "@vueuse/core"
 import { CheckboxIndicator, CheckboxRoot, useForwardPropsEmits } from "reka-ui"
 import { cn } from "@/lib/utils"

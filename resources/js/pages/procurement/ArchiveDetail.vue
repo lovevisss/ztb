@@ -61,25 +61,29 @@ const kindLabels: Record<string, string> = {
 
 <template>
     <Head :title="`项目档案 · ${application.title}`" />
-    <main class="mx-auto max-w-6xl px-5 py-8 md:px-10 md:py-12">
+    <main
+        class="mx-auto max-w-6xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
+    >
         <Link
             href="/procurement/history?status=archived"
-            class="text-sm text-emerald-800 hover:underline"
+            class="text-sm text-[var(--brand-primary)] hover:underline"
             >← 返回已归档项目</Link
         >
         <header
-            class="mt-7 flex flex-wrap justify-between gap-5 border-b border-slate-200 pb-7"
+            class="mt-[var(--brand-space-32)] flex flex-wrap justify-between gap-[var(--brand-space-24)] border-b border-[var(--brand-border)] pb-[var(--brand-space-32)]"
         >
             <div>
-                <p class="font-mono text-xs text-emerald-700">
+                <p class="font-mono text-xs text-[var(--brand-primary)]">
                     {{ application.project_number }}
                 </p>
                 <h1
-                    class="mt-2 font-serif text-3xl font-semibold text-slate-900"
+                    class="mt-[var(--brand-space-8)] font-sans text-3xl font-semibold text-[var(--brand-title)]"
                 >
                     {{ application.title }}
                 </h1>
-                <p class="mt-3 text-sm text-slate-500">
+                <p
+                    class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
+                >
                     {{
                         application.application_form === 'central_tender'
                             ? '统一招标'
@@ -88,36 +92,49 @@ const kindLabels: Record<string, string> = {
                     · 已归档 · {{ archive.archived_at.slice(0, 10) }}
                 </p>
             </div>
-            <div class="text-right text-sm text-slate-600">
+            <div class="text-right text-sm text-[var(--brand-body)]">
                 申请预算
-                <strong class="block font-serif text-2xl text-slate-900"
+                <strong
+                    class="block font-sans text-2xl text-[var(--brand-title)]"
                     >¥{{
                         (application.budget_cents / 100).toLocaleString('zh-CN')
                     }}</strong
                 >
             </div>
         </header>
-        <div class="mt-8 grid gap-7 lg:grid-cols-2">
+        <div
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-32)] lg:grid-cols-2"
+        >
             <section
-                class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
-                <h2 class="font-serif text-xl text-slate-900">申请与执行</h2>
-                <dl class="mt-5 grid grid-cols-2 gap-5 text-sm">
+                <h2 class="font-sans text-xl text-[var(--brand-title)]">
+                    申请与执行
+                </h2>
+                <dl
+                    class="mt-[var(--brand-space-24)] grid grid-cols-2 gap-[var(--brand-space-24)] text-sm"
+                >
                     <div>
-                        <dt class="text-slate-500">申请提交</dt>
-                        <dd class="mt-1 text-slate-900">
+                        <dt class="text-[var(--brand-muted)]">申请提交</dt>
+                        <dd
+                            class="mt-[var(--brand-space-8)] text-[var(--brand-title)]"
+                        >
                             {{ application.submitted_at?.slice(0, 10) ?? '—' }}
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-slate-500">完成日期</dt>
-                        <dd class="mt-1 text-slate-900">
+                        <dt class="text-[var(--brand-muted)]">完成日期</dt>
+                        <dd
+                            class="mt-[var(--brand-space-8)] text-[var(--brand-title)]"
+                        >
                             {{ execution.completed_on.slice(0, 10) }}
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-slate-500">实际金额</dt>
-                        <dd class="mt-1 text-slate-900">
+                        <dt class="text-[var(--brand-muted)]">实际金额</dt>
+                        <dd
+                            class="mt-[var(--brand-space-8)] text-[var(--brand-title)]"
+                        >
                             ¥{{
                                 (
                                     execution.actual_amount_cents / 100
@@ -126,54 +143,64 @@ const kindLabels: Record<string, string> = {
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-slate-500">成交供应商</dt>
-                        <dd class="mt-1 text-slate-900">
+                        <dt class="text-[var(--brand-muted)]">成交供应商</dt>
+                        <dd
+                            class="mt-[var(--brand-space-8)] text-[var(--brand-title)]"
+                        >
                             {{ execution.supplier }}
                         </dd>
                     </div>
                 </dl>
                 <p
                     v-if="application.reason"
-                    class="mt-6 text-sm whitespace-pre-wrap text-slate-700"
+                    class="mt-[var(--brand-space-24)] text-sm whitespace-pre-wrap text-[var(--brand-body)]"
                 >
                     {{ application.reason }}
                 </p>
-                <p class="mt-5 text-sm whitespace-pre-wrap text-slate-700">
+                <p
+                    class="mt-[var(--brand-space-24)] text-sm whitespace-pre-wrap text-[var(--brand-body)]"
+                >
                     {{ execution.result_note }}
                 </p>
                 <Link
                     :href="`/procurement/applications/${application.id}`"
-                    class="mt-5 inline-block text-sm text-emerald-800 underline"
+                    class="mt-[var(--brand-space-24)] inline-block text-sm text-[var(--brand-primary)] underline"
                     >查看完整申请内容</Link
                 >
             </section>
             <section
-                class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
-                <h2 class="font-serif text-xl text-slate-900">归档附件</h2>
-                <ul class="mt-5 divide-y divide-slate-100">
+                <h2 class="font-sans text-xl text-[var(--brand-title)]">
+                    归档附件
+                </h2>
+                <ul
+                    class="mt-[var(--brand-space-24)] divide-y divide-[var(--brand-border)]"
+                >
                     <li
                         v-for="file in attachments"
                         :key="file.id"
-                        class="flex flex-wrap justify-between gap-2 py-3 text-sm"
+                        class="flex flex-wrap justify-between gap-[var(--brand-space-8)] py-[var(--brand-space-16)] text-sm"
                     >
-                        <span class="text-slate-500">{{
+                        <span class="text-[var(--brand-muted)]">{{
                             kindLabels[file.kind] ?? file.kind
                         }}</span>
                         <a
                             :href="`/procurement/attachments/${file.id}/download`"
-                            class="font-medium text-emerald-800 hover:underline"
+                            class="font-medium text-[var(--brand-primary)] hover:underline"
                             >{{ file.original_name }} ↗</a
                         >
                     </li>
                 </ul>
             </section>
             <section
-                class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
-                <h2 class="font-serif text-xl text-slate-900">审批记录</h2>
+                <h2 class="font-sans text-xl text-[var(--brand-title)]">
+                    审批记录
+                </h2>
                 <ol
-                    class="mt-5 space-y-4 border-l border-slate-200 pl-5 text-sm"
+                    class="mt-[var(--brand-space-24)] space-y-[var(--brand-space-16)] border-l border-[var(--brand-border)] pl-[var(--brand-space-24)] text-sm"
                 >
                     <li v-for="step in approvalSteps" :key="step.id">
                         <strong
@@ -182,13 +209,15 @@ const kindLabels: Record<string, string> = {
                         >
                         <p
                             v-if="step.opinion"
-                            class="mt-1 whitespace-pre-wrap text-slate-600"
+                            class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-body)]"
                         >
                             {{ step.opinion }}
                         </p>
                     </li>
                 </ol>
-                <ul class="mt-5 space-y-2 text-xs text-slate-500">
+                <ul
+                    class="mt-[var(--brand-space-24)] space-y-[var(--brand-space-8)] text-xs text-[var(--brand-muted)]"
+                >
                     <li v-for="event in approvalEvents" :key="event.id">
                         {{ event.created_at.slice(0, 16) }} ·
                         {{ event.event }} · {{ event.details ?? '无备注' }}
@@ -196,12 +225,14 @@ const kindLabels: Record<string, string> = {
                 </ul>
             </section>
             <section
-                class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
-                <h2 class="font-serif text-xl text-slate-900">
+                <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     执行与归档记录
                 </h2>
-                <ul class="mt-5 space-y-3 text-sm text-slate-600">
+                <ul
+                    class="mt-[var(--brand-space-24)] space-y-[var(--brand-space-16)] text-sm text-[var(--brand-body)]"
+                >
                     <li v-for="event in executionEvents" :key="event.id">
                         {{ event.created_at.slice(0, 16) }} ·
                         {{ event.event }} · {{ event.details ?? '无备注' }}

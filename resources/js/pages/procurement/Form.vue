@@ -61,20 +61,24 @@ function save(intent: 'draft' | 'submit') {
     <Head
         :title="application ? '编辑部门自行采购申请' : '发起部门自行采购申请'"
     />
-    <main class="mx-auto w-full max-w-5xl px-5 py-8 md:px-10 md:py-12">
+    <main
+        class="mx-auto w-full max-w-5xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
+    >
         <Link
             href="/procurement/applications"
-            class="text-sm text-emerald-800 hover:underline"
+            class="text-sm text-[var(--brand-primary)] hover:underline"
             >← 返回申请列表</Link
         >
-        <div class="mt-7 border-b border-slate-200 pb-7">
+        <div
+            class="mt-[var(--brand-space-32)] border-b border-[var(--brand-border)] pb-[var(--brand-space-32)]"
+        >
             <p
-                class="mb-2 text-xs font-semibold tracking-[0.28em] text-emerald-700"
+                class="mb-[var(--brand-space-8)] text-xs font-semibold tracking-[0.28em] text-[var(--brand-primary)]"
             >
                 APPLICATION / 申请填报
             </p>
             <h1
-                class="font-serif text-3xl font-semibold text-slate-900 md:text-4xl"
+                class="font-sans text-3xl font-semibold text-[var(--brand-title)] md:text-4xl"
             >
                 {{
                     application
@@ -82,14 +86,16 @@ function save(intent: 'draft' | 'submit') {
                         : '发起部门自行采购申请'
                 }}
             </h1>
-            <p class="mt-3 text-sm text-slate-500">
+            <p
+                class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
+            >
                 草稿可以稍后完善；提交时需填写全部申请信息。
             </p>
         </div>
 
         <div
             v-if="needsTenderForm"
-            class="mt-7 rounded-md border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900"
+            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-page)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]"
         >
             当前预算达到统一招标分界金额，请使用
             <Link
@@ -101,23 +107,27 @@ function save(intent: 'draft' | 'submit') {
 
         <div
             v-if="!departmentAssigned"
-            class="mt-7 rounded-md border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900"
+            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-page)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]"
         >
             当前账号尚未关联部门，请联系管理员完成组织信息同步后再提交申请。
         </div>
 
         <form
-            class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_240px]"
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-32)] lg:grid-cols-[minmax(0,1fr)_240px]"
             @submit.prevent="save('submit')"
         >
-            <div class="space-y-8">
+            <div class="space-y-[var(--brand-space-32)]">
                 <section
-                    class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm md:p-8"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm md:p-[var(--brand-space-32)]"
                 >
-                    <h2 class="font-serif text-xl font-semibold text-slate-900">
+                    <h2
+                        class="font-sans text-xl font-semibold text-[var(--brand-title)]"
+                    >
                         项目基本信息
                     </h2>
-                    <div class="mt-6 grid gap-5 sm:grid-cols-2">
+                    <div
+                        class="mt-[var(--brand-space-24)] grid gap-[var(--brand-space-24)] sm:grid-cols-2"
+                    >
                         <label class="sm:col-span-2"
                             ><span class="field-label">项目名称</span
                             ><input
@@ -205,22 +215,23 @@ function save(intent: 'draft' | 'submit') {
                                 >{{ form.errors.reason }}</span
                             ></label
                         >
-                        <label class="flex items-center gap-3 sm:col-span-2"
+                        <label
+                            class="flex items-center gap-[var(--brand-space-16)] sm:col-span-2"
                             ><input
                                 v-model="form.is_fixed_asset"
                                 type="checkbox"
-                                class="size-4 accent-emerald-800"
-                            /><span class="text-sm text-slate-700"
+                                class="size-4 accent-[var(--brand-primary)]"
+                            /><span class="text-sm text-[var(--brand-body)]"
                                 >属于家具设备类固定资产</span
                             ></label
                         >
                     </div>
                 </section>
-                <div class="flex flex-wrap gap-3">
+                <div class="flex flex-wrap gap-[var(--brand-space-16)]">
                     <button
                         type="button"
                         :disabled="form.processing || !departmentAssigned"
-                        class="rounded-md border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                        class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-body)] hover:bg-[var(--brand-page)] disabled:opacity-50"
                         @click="save('draft')"
                     >
                         保存草稿</button
@@ -231,24 +242,28 @@ function save(intent: 'draft' | 'submit') {
                             !departmentAssigned ||
                             needsTenderForm
                         "
-                        class="rounded-md bg-emerald-800 px-6 py-3 text-sm font-medium text-white hover:bg-emerald-900 disabled:opacity-50"
+                        class="rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-card)] hover:bg-[var(--brand-primary)] disabled:opacity-50"
                     >
                         提交申请
                     </button>
                 </div>
             </div>
             <aside
-                class="h-fit rounded-lg border border-emerald-200 bg-emerald-50/70 p-6 lg:sticky lg:top-8"
+                class="h-fit rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] bg-[var(--brand-primary-light)]/70 p-[var(--brand-space-24)] lg:sticky lg:top-8"
             >
                 <p
-                    class="text-xs font-semibold tracking-widest text-emerald-800"
+                    class="text-xs font-semibold tracking-widest text-[var(--brand-primary)]"
                 >
                     分类预览
                 </p>
-                <p class="mt-4 font-serif text-lg text-slate-900">
+                <p
+                    class="mt-[var(--brand-space-16)] font-sans text-lg text-[var(--brand-title)]"
+                >
                     {{ classification }}
                 </p>
-                <p class="mt-4 text-xs leading-6 text-slate-600">
+                <p
+                    class="mt-[var(--brand-space-16)] text-xs leading-6 text-[var(--brand-body)]"
+                >
                     当前分类界限为
                     {{ threshold.toLocaleString('zh-CN') }}
                     元，达到界限归入统一招标。最终分类以提交时规则为准。
@@ -264,27 +279,28 @@ function save(intent: 'draft' | 'submit') {
     margin-bottom: 0.5rem;
     font-size: 0.875rem;
     font-weight: 600;
-    color: #334155;
+    color: var(--brand-body);
 }
 .field-input {
     display: block;
     width: 100%;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--brand-border);
     border-radius: 0.375rem;
     background: white;
     padding: 0.7rem 0.85rem;
     font-size: 0.875rem;
-    color: #0f172a;
+    color: var(--brand-title);
     outline: none;
 }
 .field-input:focus {
-    border-color: #047857;
-    box-shadow: 0 0 0 3px #04785720;
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px
+        color-mix(in srgb, var(--brand-primary) 20%, transparent);
 }
 .field-error {
     display: block;
     margin-top: 0.35rem;
     font-size: 0.75rem;
-    color: #b91c1c;
+    color: var(--brand-danger);
 }
 </style>

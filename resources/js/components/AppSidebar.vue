@@ -1,27 +1,22 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
-    BookOpen,
-    FolderGit2,
-    LayoutGrid,
-    ClipboardList,
-    SlidersHorizontal,
-    ListChecks,
-    Workflow,
-    History,
-    ChartColumn,
-    Archive,
-    Users,
-    Network,
-} from '@lucide/vue';
+    IconLayoutDashboard,
+    IconClipboardList,
+    IconAdjustments,
+    IconListCheck,
+    IconGitBranch,
+    IconHistory,
+    IconChartBar,
+    IconArchive,
+    IconUsers,
+    IconHierarchy,
+} from '@tabler/icons-vue';
 import AppLogo from '@/components/AppLogo.vue';
-import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
-import NavUser from '@/components/NavUser.vue';
 import {
     Sidebar,
     SidebarContent,
-    SidebarFooter,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
@@ -32,29 +27,29 @@ import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
+        title: '工作台',
         href: dashboard(),
-        icon: LayoutGrid,
+        icon: IconLayoutDashboard,
     },
     {
         title: '采购申请',
         href: '/procurement/applications',
-        icon: ClipboardList,
+        icon: IconClipboardList,
     },
     {
         title: '待我审批',
         href: '/procurement/approvals',
-        icon: ListChecks,
+        icon: IconListCheck,
     },
     {
         title: '历史项目',
         href: '/procurement/history',
-        icon: History,
+        icon: IconHistory,
     },
     {
         title: '采购统计',
         href: '/procurement/statistics',
-        icon: ChartColumn,
+        icon: IconChartBar,
     },
 ];
 
@@ -65,7 +60,7 @@ if (canManageClassification) {
     mainNavItems.push({
         title: '分类规则',
         href: '/procurement/classification-rules',
-        icon: SlidersHorizontal,
+        icon: IconAdjustments,
     });
 }
 
@@ -73,12 +68,12 @@ if (usePage().props.canManageApprovals === true) {
     mainNavItems.push({
         title: '审批流程',
         href: '/procurement/approval-templates',
-        icon: Workflow,
+        icon: IconGitBranch,
     });
     mainNavItems.push({
         title: '归档规则',
         href: '/procurement/archive-rules',
-        icon: Archive,
+        icon: IconArchive,
     });
 }
 
@@ -86,31 +81,18 @@ if (usePage().props.canManageSchoolUsers === true) {
     mainNavItems.push({
         title: '校内账号',
         href: '/admin/school-identities',
-        icon: Users,
+        icon: IconUsers,
     });
     mainNavItems.push({
         title: '组织同步',
         href: '/admin/organization',
-        icon: Network,
+        icon: IconHierarchy,
     });
 }
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
-];
 </script>
 
 <template>
-    <Sidebar collapsible="icon" variant="inset">
+    <Sidebar collapsible="icon" variant="sidebar">
         <SidebarHeader>
             <SidebarMenu>
                 <SidebarMenuItem>
@@ -126,11 +108,6 @@ const footerNavItems: NavItem[] = [
         <SidebarContent>
             <NavMain :items="mainNavItems" />
         </SidebarContent>
-
-        <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
-            <NavUser />
-        </SidebarFooter>
     </Sidebar>
     <slot />
 </template>

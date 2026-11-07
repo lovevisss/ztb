@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
-import { Eye, EyeOff, LockKeyhole, RefreshCw } from '@lucide/vue';
+import {
+    IconEye as Eye,
+    IconEyeOff as EyeOff,
+    IconLock as LockKeyhole,
+    IconRefresh as RefreshCw,
+} from '@tabler/icons-vue';
 import { nextTick, onMounted, ref, useTemplateRef } from 'vue';
 import AlertError from '@/components/AlertError.vue';
 import { Button } from '@/components/ui/button';
@@ -53,7 +58,11 @@ onMounted(async () => {
             <div
                 class="flex flex-col gap-3 select-none sm:flex-row sm:items-center sm:justify-between"
             >
-                <Button @click="toggleRecoveryCodesVisibility" class="w-fit">
+                <Button
+                    @click="toggleRecoveryCodesVisibility"
+                    variant="outline"
+                    class="w-fit"
+                >
                     <component
                         :is="isRecoveryCodesVisible ? EyeOff : Eye"
                         class="size-4"

@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
 import { useClipboard } from '@vueuse/core';
-import { Check, Copy, ScanLine } from '@lucide/vue';
+import {
+    IconCheck as Check,
+    IconCopy as Copy,
+    IconScan as ScanLine,
+} from '@tabler/icons-vue';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import AlertError from '@/components/AlertError.vue';
 import InputError from '@/components/InputError.vue';

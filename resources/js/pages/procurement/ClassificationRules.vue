@@ -37,65 +37,91 @@ function departmentName(id: number | null) {
 
 <template>
     <Head title="采购分类规则" />
-    <main class="mx-auto w-full max-w-6xl px-5 py-8 md:px-10 md:py-12">
-        <header class="border-b border-slate-200 pb-7">
+    <main
+        class="mx-auto w-full max-w-6xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
+    >
+        <header
+            class="border-b border-[var(--brand-border)] pb-[var(--brand-space-32)]"
+        >
             <p
-                class="mb-2 text-xs font-semibold tracking-[0.28em] text-emerald-700"
+                class="mb-[var(--brand-space-8)] text-xs font-semibold tracking-[0.28em] text-[var(--brand-primary)]"
             >
                 POLICY / 采购管理
             </p>
             <h1
-                class="font-serif text-3xl font-semibold text-slate-900 md:text-4xl"
+                class="font-sans text-3xl font-semibold text-[var(--brand-title)] md:text-4xl"
             >
                 采购分类规则
             </h1>
-            <p class="mt-3 text-sm text-slate-500">
+            <p
+                class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
+            >
                 设置预算分界金额与生效时间。已经提交的项目保留原分类结果。
             </p>
         </header>
 
-        <div class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-32)] lg:grid-cols-[minmax(0,1fr)_340px]"
+        >
             <section
-                class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+                class="overflow-hidden rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] shadow-sm"
             >
-                <div class="border-b border-slate-100 px-6 py-5">
-                    <h2 class="font-serif text-xl font-semibold text-slate-900">
+                <div
+                    class="border-b border-[var(--brand-border)] px-[var(--brand-space-24)] py-[var(--brand-space-24)]"
+                >
+                    <h2
+                        class="font-sans text-xl font-semibold text-[var(--brand-title)]"
+                    >
                         规则记录
                     </h2>
-                    <p class="mt-1 text-xs text-slate-500">
+                    <p
+                        class="mt-[var(--brand-space-8)] text-xs text-[var(--brand-muted)]"
+                    >
                         到达生效时间后，新提交项目自动采用适用规则。
                     </p>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[540px] text-left text-sm">
                         <thead
-                            class="bg-slate-50 text-xs font-semibold text-slate-500"
+                            class="bg-[var(--brand-page)] text-xs font-semibold text-[var(--brand-muted)]"
                         >
                             <tr>
-                                <th class="px-6 py-4">适用范围</th>
-                                <th class="px-6 py-4">分界金额</th>
-                                <th class="px-6 py-4">生效时间</th>
+                                <th
+                                    class="px-[var(--brand-space-24)] py-[var(--brand-space-16)]"
+                                >
+                                    适用范围
+                                </th>
+                                <th
+                                    class="px-[var(--brand-space-24)] py-[var(--brand-space-16)]"
+                                >
+                                    分界金额
+                                </th>
+                                <th
+                                    class="px-[var(--brand-space-24)] py-[var(--brand-space-16)]"
+                                >
+                                    生效时间
+                                </th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100">
+                        <tbody class="divide-y divide-[var(--brand-border)]">
                             <tr v-for="rule in rules" :key="rule.id">
                                 <td
-                                    class="px-6 py-5 font-medium text-slate-800"
+                                    class="px-[var(--brand-space-24)] py-[var(--brand-space-24)] font-medium text-[var(--brand-title)]"
                                 >
                                     {{ departmentName(rule.department_id) }}
                                     <span
                                         v-if="rule.is_active"
-                                        class="ml-2 rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-800"
+                                        class="ml-[var(--brand-space-8)] rounded-full bg-[var(--brand-primary-light)] px-[var(--brand-space-8)] py-[var(--brand-space-8)] text-xs text-[var(--brand-primary)]"
                                         >当前</span
                                     >
                                     <span
                                         v-else-if="rule.is_scheduled"
-                                        class="ml-2 rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-800"
+                                        class="ml-[var(--brand-space-8)] rounded-full bg-[var(--brand-page)] px-[var(--brand-space-8)] py-[var(--brand-space-8)] text-xs text-[var(--brand-warning)]"
                                         >待生效</span
                                     >
                                 </td>
                                 <td
-                                    class="px-6 py-5 text-slate-800 tabular-nums"
+                                    class="px-[var(--brand-space-24)] py-[var(--brand-space-24)] text-[var(--brand-title)] tabular-nums"
                                 >
                                     ¥{{
                                         (
@@ -103,7 +129,9 @@ function departmentName(id: number | null) {
                                         ).toLocaleString('zh-CN')
                                     }}
                                 </td>
-                                <td class="px-6 py-5 text-slate-500">
+                                <td
+                                    class="px-[var(--brand-space-24)] py-[var(--brand-space-24)] text-[var(--brand-muted)]"
+                                >
                                     {{
                                         rule.effective_at
                                             .slice(0, 16)
@@ -117,17 +145,22 @@ function departmentName(id: number | null) {
             </section>
 
             <section
-                class="h-fit rounded-lg border border-emerald-200 bg-emerald-50/60 p-6 lg:sticky lg:top-8"
+                class="h-fit rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] bg-[var(--brand-primary-light)]/60 p-[var(--brand-space-24)] lg:sticky lg:top-8"
             >
                 <p
-                    class="text-xs font-semibold tracking-widest text-emerald-800"
+                    class="text-xs font-semibold tracking-widest text-[var(--brand-primary)]"
                 >
                     新增规则
                 </p>
-                <h2 class="mt-2 font-serif text-xl text-slate-900">
+                <h2
+                    class="mt-[var(--brand-space-8)] font-sans text-xl text-[var(--brand-title)]"
+                >
                     安排下一版分类标准
                 </h2>
-                <form class="mt-6 space-y-5" @submit.prevent="save">
+                <form
+                    class="mt-[var(--brand-space-24)] space-y-[var(--brand-space-24)]"
+                    @submit.prevent="save"
+                >
                     <label class="block">
                         <span class="field-label">预算分界金额（元）</span>
                         <input
@@ -194,11 +227,11 @@ function departmentName(id: number | null) {
                     <button
                         type="submit"
                         :disabled="form.processing"
-                        class="w-full rounded-md bg-emerald-800 px-5 py-3 text-sm font-medium text-white hover:bg-emerald-900 disabled:opacity-50"
+                        class="w-full rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-card)] hover:bg-[var(--brand-primary)] disabled:opacity-50"
                     >
                         保存规则
                     </button>
-                    <p class="text-xs leading-5 text-slate-600">
+                    <p class="text-xs leading-5 text-[var(--brand-body)]">
                         部门规则优先于全校规则。调整后只影响生效时间之后提交的申请。
                     </p>
                 </form>
@@ -213,27 +246,28 @@ function departmentName(id: number | null) {
     margin-bottom: 0.5rem;
     font-size: 0.875rem;
     font-weight: 600;
-    color: #334155;
+    color: var(--brand-body);
 }
 .field-input {
     display: block;
     width: 100%;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--brand-border);
     border-radius: 0.375rem;
     background: white;
     padding: 0.7rem 0.85rem;
     font-size: 0.875rem;
-    color: #0f172a;
+    color: var(--brand-title);
     outline: none;
 }
 .field-input:focus {
-    border-color: #047857;
-    box-shadow: 0 0 0 3px #04785720;
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px
+        color-mix(in srgb, var(--brand-primary) 20%, transparent);
 }
 .field-error {
     display: block;
     margin-top: 0.35rem;
     font-size: 0.75rem;
-    color: #b91c1c;
+    color: var(--brand-danger);
 }
 </style>

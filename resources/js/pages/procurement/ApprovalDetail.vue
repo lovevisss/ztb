@@ -126,25 +126,29 @@ const statusLabel: Record<string, string> = {
 
 <template>
     <Head :title="application.title" />
-    <main class="mx-auto w-full max-w-6xl px-5 py-8 md:px-10 md:py-12">
+    <main
+        class="mx-auto w-full max-w-6xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
+    >
         <Link
             href="/procurement/approvals"
-            class="text-sm text-emerald-800 hover:underline"
+            class="text-sm text-[var(--brand-primary)] hover:underline"
             >← 返回待办</Link
         >
         <header
-            class="mt-7 flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-7"
+            class="mt-[var(--brand-space-32)] flex flex-wrap items-end justify-between gap-[var(--brand-space-16)] border-b border-[var(--brand-border)] pb-[var(--brand-space-32)]"
         >
             <div>
-                <p class="font-mono text-xs text-emerald-700">
+                <p class="font-mono text-xs text-[var(--brand-primary)]">
                     {{ application.project_number }}
                 </p>
                 <h1
-                    class="mt-2 font-serif text-3xl font-semibold text-slate-900"
+                    class="mt-[var(--brand-space-8)] font-sans text-3xl font-semibold text-[var(--brand-title)]"
                 >
                     {{ application.title }}
                 </h1>
-                <p class="mt-3 text-sm text-slate-500">
+                <p
+                    class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
+                >
                     {{
                         application.purchase_type === 'central_tender'
                             ? '统一招标'
@@ -154,14 +158,14 @@ const statusLabel: Record<string, string> = {
                     {{ statusLabel[application.status] ?? application.status }}
                 </p>
             </div>
-            <p class="font-serif text-2xl text-slate-900">
+            <p class="font-sans text-2xl text-[var(--brand-title)]">
                 ¥{{ (application.budget_cents / 100).toLocaleString('zh-CN') }}
             </p>
         </header>
 
         <div
             v-if="sourceApplication"
-            class="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm text-emerald-900"
+            class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] bg-[var(--brand-primary-light)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-primary)]"
         >
             来源项目：<Link
                 v-if="sourceApplication.canView"
@@ -175,42 +179,58 @@ const statusLabel: Record<string, string> = {
             >
         </div>
 
-        <div class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-            <div class="space-y-7">
+        <div
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-32)] lg:grid-cols-[minmax(0,1fr)_340px]"
+        >
+            <div class="space-y-[var(--brand-space-32)]">
                 <section
-                    class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
                 >
-                    <h2 class="font-serif text-xl font-semibold text-slate-900">
+                    <h2
+                        class="font-sans text-xl font-semibold text-[var(--brand-title)]"
+                    >
                         申请内容
                     </h2>
-                    <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+                    <dl
+                        class="mt-[var(--brand-space-24)] grid gap-[var(--brand-space-16)] text-sm sm:grid-cols-2"
+                    >
                         <div>
-                            <dt class="text-slate-500">经费列支</dt>
-                            <dd class="mt-1 text-slate-900">
+                            <dt class="text-[var(--brand-muted)]">经费列支</dt>
+                            <dd
+                                class="mt-[var(--brand-space-8)] text-[var(--brand-title)]"
+                            >
                                 {{ application.funding_source }}
                             </dd>
                         </div>
                         <div>
-                            <dt class="text-slate-500">归口部门</dt>
-                            <dd class="mt-1 text-slate-900">
+                            <dt class="text-[var(--brand-muted)]">归口部门</dt>
+                            <dd
+                                class="mt-[var(--brand-space-8)] text-[var(--brand-title)]"
+                            >
                                 {{ application.responsible_department }}
                             </dd>
                         </div>
                         <div>
-                            <dt class="text-slate-500">组织形式</dt>
-                            <dd class="mt-1 text-slate-900">
+                            <dt class="text-[var(--brand-muted)]">组织形式</dt>
+                            <dd
+                                class="mt-[var(--brand-space-8)] text-[var(--brand-title)]"
+                            >
                                 {{ application.organization_form }}
                             </dd>
                         </div>
                         <div>
-                            <dt class="text-slate-500">采购方式</dt>
-                            <dd class="mt-1 text-slate-900">
+                            <dt class="text-[var(--brand-muted)]">采购方式</dt>
+                            <dd
+                                class="mt-[var(--brand-space-8)] text-[var(--brand-title)]"
+                            >
                                 {{ application.purchase_method }}
                             </dd>
                         </div>
                         <div v-if="application.reason" class="sm:col-span-2">
-                            <dt class="text-slate-500">采购理由</dt>
-                            <dd class="mt-1 whitespace-pre-wrap text-slate-900">
+                            <dt class="text-[var(--brand-muted)]">采购理由</dt>
+                            <dd
+                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
+                            >
                                 {{ application.reason }}
                             </dd>
                         </div>
@@ -218,8 +238,10 @@ const statusLabel: Record<string, string> = {
                             v-if="application.procurement_requirements"
                             class="sm:col-span-2"
                         >
-                            <dt class="text-slate-500">采购需求</dt>
-                            <dd class="mt-1 whitespace-pre-wrap text-slate-900">
+                            <dt class="text-[var(--brand-muted)]">采购需求</dt>
+                            <dd
+                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
+                            >
                                 {{ application.procurement_requirements }}
                             </dd>
                         </div>
@@ -227,8 +249,10 @@ const statusLabel: Record<string, string> = {
                             v-if="application.purchase_list"
                             class="sm:col-span-2"
                         >
-                            <dt class="text-slate-500">采购清单</dt>
-                            <dd class="mt-1 whitespace-pre-wrap text-slate-900">
+                            <dt class="text-[var(--brand-muted)]">采购清单</dt>
+                            <dd
+                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
+                            >
                                 {{ application.purchase_list }}
                             </dd>
                         </div>
@@ -236,8 +260,10 @@ const statusLabel: Record<string, string> = {
                             v-if="application.technical_parameters"
                             class="sm:col-span-2"
                         >
-                            <dt class="text-slate-500">技术参数</dt>
-                            <dd class="mt-1 whitespace-pre-wrap text-slate-900">
+                            <dt class="text-[var(--brand-muted)]">技术参数</dt>
+                            <dd
+                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
+                            >
                                 {{ application.technical_parameters }}
                             </dd>
                         </div>
@@ -245,8 +271,10 @@ const statusLabel: Record<string, string> = {
                             v-if="application.service_requirements"
                             class="sm:col-span-2"
                         >
-                            <dt class="text-slate-500">服务要求</dt>
-                            <dd class="mt-1 whitespace-pre-wrap text-slate-900">
+                            <dt class="text-[var(--brand-muted)]">服务要求</dt>
+                            <dd
+                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
+                            >
                                 {{ application.service_requirements }}
                             </dd>
                         </div>
@@ -254,8 +282,10 @@ const statusLabel: Record<string, string> = {
                             v-if="application.acceptance_criteria"
                             class="sm:col-span-2"
                         >
-                            <dt class="text-slate-500">验收标准</dt>
-                            <dd class="mt-1 whitespace-pre-wrap text-slate-900">
+                            <dt class="text-[var(--brand-muted)]">验收标准</dt>
+                            <dd
+                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
+                            >
                                 {{ application.acceptance_criteria }}
                             </dd>
                         </div>
@@ -263,24 +293,30 @@ const statusLabel: Record<string, string> = {
                             v-if="application.budget_basis_note"
                             class="sm:col-span-2"
                         >
-                            <dt class="text-slate-500">预算测算</dt>
-                            <dd class="mt-1 whitespace-pre-wrap text-slate-900">
+                            <dt class="text-[var(--brand-muted)]">预算测算</dt>
+                            <dd
+                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
+                            >
                                 {{ application.budget_basis_note }}
                             </dd>
                         </div>
                     </dl>
                     <div
                         v-if="attachments.length"
-                        class="mt-6 border-t border-slate-100 pt-5"
+                        class="mt-[var(--brand-space-24)] border-t border-[var(--brand-border)] pt-[var(--brand-space-24)]"
                     >
-                        <h3 class="text-sm font-semibold text-slate-800">
+                        <h3
+                            class="text-sm font-semibold text-[var(--brand-title)]"
+                        >
                             申请附件
                         </h3>
-                        <ul class="mt-3 space-y-2">
+                        <ul
+                            class="mt-[var(--brand-space-16)] space-y-[var(--brand-space-8)]"
+                        >
                             <li v-for="file in attachments" :key="file.id">
                                 <a
                                     :href="`/procurement/attachments/${file.id}/download`"
-                                    class="text-sm text-emerald-800 hover:underline"
+                                    class="text-sm text-[var(--brand-primary)] hover:underline"
                                     >{{ file.original_name }} ↗</a
                                 >
                             </li>
@@ -289,21 +325,25 @@ const statusLabel: Record<string, string> = {
                 </section>
 
                 <section
-                    class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
                 >
-                    <h2 class="font-serif text-xl font-semibold text-slate-900">
+                    <h2
+                        class="font-sans text-xl font-semibold text-[var(--brand-title)]"
+                    >
                         审批记录
                     </h2>
-                    <ol class="mt-5 space-y-5 border-l border-slate-200 pl-5">
+                    <ol
+                        class="mt-[var(--brand-space-24)] space-y-[var(--brand-space-24)] border-l border-[var(--brand-border)] pl-[var(--brand-space-24)]"
+                    >
                         <li
                             v-for="step in steps"
                             :key="step.id"
                             class="relative text-sm"
                         >
                             <span
-                                class="absolute top-1 -left-[25px] size-2 rounded-full bg-emerald-700"
+                                class="absolute top-1 -left-[25px] size-2 rounded-full bg-[var(--brand-primary)]"
                             />
-                            <p class="font-medium text-slate-900">
+                            <p class="font-medium text-[var(--brand-title)]">
                                 第 {{ step.attempt }} 轮 ·
                                 {{
                                     roleLabel[step.role_code] ?? step.role_code
@@ -312,13 +352,13 @@ const statusLabel: Record<string, string> = {
                             </p>
                             <p
                                 v-if="step.opinion"
-                                class="mt-1 whitespace-pre-wrap text-slate-600"
+                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-body)]"
                             >
                                 {{ step.opinion }}
                             </p>
                             <p
                                 v-if="step.acted_at"
-                                class="mt-1 text-xs text-slate-400"
+                                class="mt-[var(--brand-space-8)] text-xs text-[var(--brand-muted)]"
                             >
                                 {{
                                     step.acted_at.slice(0, 16).replace('T', ' ')
@@ -329,7 +369,7 @@ const statusLabel: Record<string, string> = {
                 </section>
             </div>
 
-            <aside class="space-y-5">
+            <aside class="space-y-[var(--brand-space-24)]">
                 <section
                     v-if="
                         [
@@ -339,18 +379,20 @@ const statusLabel: Record<string, string> = {
                             'archived',
                         ].includes(application.status)
                     "
-                    class="rounded-lg border border-emerald-200 bg-emerald-50 p-6"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] bg-[var(--brand-primary-light)] p-[var(--brand-space-24)]"
                 >
-                    <h2 class="font-serif text-lg text-slate-900">采购执行</h2>
+                    <h2 class="font-sans text-lg text-[var(--brand-title)]">
+                        采购执行
+                    </h2>
                     <p
                         v-if="execution?.supplier"
-                        class="mt-3 text-sm text-slate-700"
+                        class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-body)]"
                     >
                         供应商：{{ execution.supplier }}
                     </p>
                     <p
                         v-if="execution?.actual_amount_cents != null"
-                        class="mt-1 text-sm text-slate-700"
+                        class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-body)]"
                     >
                         实际金额：¥{{
                             (
@@ -360,7 +402,7 @@ const statusLabel: Record<string, string> = {
                     </p>
                     <Link
                         :href="`/procurement/applications/${application.id}/execution`"
-                        class="mt-4 inline-block text-sm font-semibold text-emerald-800 underline"
+                        class="mt-[var(--brand-space-16)] inline-block text-sm font-semibold text-[var(--brand-primary)] underline"
                         >查看执行登记 →</Link
                     >
                     <div
@@ -368,14 +410,16 @@ const statusLabel: Record<string, string> = {
                             canManageApprovals &&
                             application.status !== 'archived'
                         "
-                        class="mt-5 border-t border-emerald-200 pt-4"
+                        class="mt-[var(--brand-space-24)] border-t border-[var(--brand-primary)] pt-[var(--brand-space-16)]"
                     >
-                        <label class="text-sm text-slate-700">指定执行人</label>
+                        <label class="text-sm text-[var(--brand-body)]"
+                            >指定执行人</label
+                        >
                         <el-select
                             v-model="executorAssignment.executor_id"
                             filterable
                             placeholder="选择执行人"
-                            class="mt-2 w-full"
+                            class="mt-[var(--brand-space-8)] w-full"
                         >
                             <el-option
                                 v-for="user in users"
@@ -386,12 +430,12 @@ const statusLabel: Record<string, string> = {
                         </el-select>
                         <p
                             v-if="executorAssignment.errors.executor_id"
-                            class="mt-1 text-xs text-red-700"
+                            class="mt-[var(--brand-space-8)] text-xs text-[var(--brand-danger)]"
                         >
                             {{ executorAssignment.errors.executor_id }}
                         </p>
                         <el-button
-                            class="mt-3"
+                            class="mt-[var(--brand-space-16)]"
                             :loading="executorAssignment.processing"
                             @click="assignExecutor"
                             >保存执行人</el-button
@@ -403,23 +447,27 @@ const statusLabel: Record<string, string> = {
                         application.status === 'execution_completed' ||
                         application.status === 'archived'
                     "
-                    class="rounded-lg border border-slate-200 bg-white p-6"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
                 >
-                    <h2 class="font-serif text-lg text-slate-900">项目归档</h2>
+                    <h2 class="font-sans text-lg text-[var(--brand-title)]">
+                        项目归档
+                    </h2>
                     <template v-if="application.status === 'archived'">
-                        <p class="mt-3 text-sm text-slate-600">
+                        <p
+                            class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-body)]"
+                        >
                             材料已核验，档案只读。
                         </p>
                         <Link
                             :href="`/procurement/applications/${application.id}/archive`"
-                            class="mt-3 inline-block text-sm font-medium text-emerald-800 underline"
+                            class="mt-[var(--brand-space-16)] inline-block text-sm font-medium text-[var(--brand-primary)] underline"
                             >查看项目档案 →</Link
                         >
                     </template>
                     <template v-else>
                         <p
                             v-if="missingArchiveMaterials.length"
-                            class="mt-3 text-sm leading-6 text-amber-800"
+                            class="mt-[var(--brand-space-16)] text-sm leading-6 text-[var(--brand-warning)]"
                         >
                             尚缺：{{
                                 missingArchiveMaterials
@@ -430,19 +478,21 @@ const statusLabel: Record<string, string> = {
                                     .join('、')
                             }}
                         </p>
-                        <p v-else class="mt-3 text-sm text-emerald-800">
+                        <p
+                            v-else
+                            class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-primary)]"
+                        >
                             必需材料已齐全，可以归档。
                         </p>
                         <p
                             v-if="archiving.errors.materials"
-                            class="mt-2 text-xs text-red-700"
+                            class="mt-[var(--brand-space-8)] text-xs text-[var(--brand-danger)]"
                         >
                             {{ archiving.errors.materials }}
                         </p>
                         <el-button
                             v-if="canArchive"
-                            class="mt-4"
-                            type="primary"
+                            class="mt-[var(--brand-space-16)]"
                             :disabled="missingArchiveMaterials.length > 0"
                             :loading="archiving.processing"
                             @click="archiveProject"
@@ -457,14 +507,14 @@ const statusLabel: Record<string, string> = {
                             item.assignee_id === currentUserId,
                     )"
                     :key="step.id"
-                    class="rounded-lg border border-emerald-200 bg-emerald-50/70 p-6"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] bg-[var(--brand-primary-light)]/70 p-[var(--brand-space-24)]"
                 >
-                    <h2 class="font-serif text-xl text-slate-900">
+                    <h2 class="font-sans text-xl text-[var(--brand-title)]">
                         填写审批意见
                     </h2>
                     <el-input
                         v-model="decision.opinion"
-                        class="mt-4"
+                        class="mt-[var(--brand-space-16)]"
                         type="textarea"
                         :rows="4"
                         maxlength="2000"
@@ -473,11 +523,13 @@ const statusLabel: Record<string, string> = {
                     />
                     <p
                         v-if="decision.errors.opinion"
-                        class="mt-2 text-xs text-red-700"
+                        class="mt-[var(--brand-space-8)] text-xs text-[var(--brand-danger)]"
                     >
                         {{ decision.errors.opinion }}
                     </p>
-                    <div class="mt-5 flex flex-wrap gap-2">
+                    <div
+                        class="mt-[var(--brand-space-24)] flex flex-wrap gap-[var(--brand-space-8)]"
+                    >
                         <el-button
                             type="primary"
                             :loading="decision.processing"
@@ -503,9 +555,9 @@ const statusLabel: Record<string, string> = {
                             ['pending', 'queued'].includes(step.status),
                         )
                     "
-                    class="rounded-lg border border-slate-200 bg-white p-6"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
                 >
-                    <h2 class="font-serif text-lg text-slate-900">
+                    <h2 class="font-sans text-lg text-[var(--brand-title)]">
                         调整审批人
                     </h2>
                     <div
@@ -513,9 +565,11 @@ const statusLabel: Record<string, string> = {
                             ['pending', 'queued'].includes(item.status),
                         )"
                         :key="step.id"
-                        class="mt-4 border-t border-slate-100 pt-4"
+                        class="mt-[var(--brand-space-16)] border-t border-[var(--brand-border)] pt-[var(--brand-space-16)]"
                     >
-                        <p class="mb-2 text-xs text-slate-500">
+                        <p
+                            class="mb-[var(--brand-space-8)] text-xs text-[var(--brand-muted)]"
+                        >
                             {{ roleLabel[step.role_code] ?? step.role_code }}
                         </p>
                         <el-select
@@ -529,7 +583,7 @@ const statusLabel: Record<string, string> = {
                                 :label="user.name"
                                 :value="user.id" /></el-select
                         ><el-button
-                            class="mt-2"
+                            class="mt-[var(--brand-space-8)]"
                             size="small"
                             @click="reassign(step.id)"
                             >更新此节点</el-button
@@ -542,14 +596,14 @@ const statusLabel: Record<string, string> = {
                         application.applicant_id === currentUserId &&
                         application.application_form === 'self_purchase'
                     "
-                    class="rounded-lg border border-amber-200 bg-amber-50 p-6"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-page)] p-[var(--brand-space-24)]"
                 >
-                    <p class="text-sm text-amber-900">
+                    <p class="text-sm text-[var(--brand-warning)]">
                         申请已退回，请修改后重新提交。
                     </p>
                     <Link
                         :href="`/procurement/applications/${application.id}/edit`"
-                        class="mt-3 inline-block text-sm font-semibold text-amber-900 underline"
+                        class="mt-[var(--brand-space-16)] inline-block text-sm font-semibold text-[var(--brand-warning)] underline"
                         >编辑申请</Link
                     >
                 </section>
@@ -559,23 +613,27 @@ const statusLabel: Record<string, string> = {
                         application.applicant_id === currentUserId &&
                         application.application_form === 'central_tender'
                     "
-                    class="rounded-lg border border-amber-200 bg-amber-50 p-6"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-page)] p-[var(--brand-space-24)]"
                 >
-                    <p class="text-sm text-amber-900">
+                    <p class="text-sm text-[var(--brand-warning)]">
                         申请已退回，请修改后重新提交。
                     </p>
                     <Link
                         :href="`/procurement/tenders/${application.id}/edit`"
-                        class="mt-3 inline-block text-sm font-semibold text-amber-900 underline"
+                        class="mt-[var(--brand-space-16)] inline-block text-sm font-semibold text-[var(--brand-warning)] underline"
                         >编辑申请</Link
                     >
                 </section>
                 <section
                     v-if="events.length"
-                    class="rounded-lg border border-slate-200 bg-white p-6"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
                 >
-                    <h2 class="font-serif text-lg text-slate-900">操作历史</h2>
-                    <ul class="mt-4 space-y-3 text-xs text-slate-500">
+                    <h2 class="font-sans text-lg text-[var(--brand-title)]">
+                        操作历史
+                    </h2>
+                    <ul
+                        class="mt-[var(--brand-space-16)] space-y-[var(--brand-space-16)] text-xs text-[var(--brand-muted)]"
+                    >
                         <li v-for="event in events" :key="event.id">
                             {{ event.event }} · {{ event.details || '无备注' }}
                         </li>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import { ChevronsUpDown } from '@lucide/vue';
+import { IconSelector as ChevronsUpDown } from '@tabler/icons-vue';
 import { computed } from 'vue';
 import {
     DropdownMenu,

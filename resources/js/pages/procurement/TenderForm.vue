@@ -88,43 +88,49 @@ function save(intent: 'draft' | 'submit') {
 
 <template>
     <Head :title="application ? '编辑统一招标申请' : '发起统一招标申请'" />
-    <main class="mx-auto w-full max-w-5xl px-5 py-8 md:px-10 md:py-12">
+    <main
+        class="mx-auto w-full max-w-5xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
+    >
         <Link
             href="/procurement/applications"
-            class="text-sm text-emerald-800 hover:underline"
+            class="text-sm text-[var(--brand-primary)] hover:underline"
             >← 返回申请列表</Link
         >
-        <header class="mt-7 border-b border-slate-200 pb-7">
+        <header
+            class="mt-[var(--brand-space-32)] border-b border-[var(--brand-border)] pb-[var(--brand-space-32)]"
+        >
             <p
-                class="mb-2 text-xs font-semibold tracking-[0.28em] text-emerald-700"
+                class="mb-[var(--brand-space-8)] text-xs font-semibold tracking-[0.28em] text-[var(--brand-primary)]"
             >
                 CENTRAL TENDER / 统一招标
             </p>
             <h1
-                class="font-serif text-3xl font-semibold text-slate-900 md:text-4xl"
+                class="font-sans text-3xl font-semibold text-[var(--brand-title)] md:text-4xl"
             >
                 {{ application ? '完善统一招标申请' : '发起统一招标申请' }}
             </h1>
-            <p class="mt-3 text-sm text-slate-500">
+            <p
+                class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
+            >
                 填写采购需求与技术要求，上传需求书和预算依据后提交。
             </p>
         </header>
         <div
             v-if="application?.source_application_id"
-            class="mt-7 rounded-md border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900"
+            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] bg-[var(--brand-primary-light)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-primary)]"
         >
             此申请复制自历史项目。采购需求书、预算依据和其他附件需要重新上传，提交时重新走完整审批流程。
         </div>
 
         <div
             v-if="!departmentAssigned"
-            class="mt-7 rounded-md border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900"
+            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-page)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]"
         >
             当前账号尚未关联部门，请联系管理员完成组织信息同步。
         </div>
         <div
             v-if="budgetBelowThreshold"
-            class="mt-7 rounded-md border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900"
+            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-page)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]"
         >
             当前预算低于 {{ threshold.toLocaleString('zh-CN') }} 元，请改用
             <Link
@@ -134,10 +140,15 @@ function save(intent: 'draft' | 'submit') {
             >。
         </div>
 
-        <form class="mt-8 space-y-7" @submit.prevent="save('submit')">
+        <form
+            class="mt-[var(--brand-space-32)] space-y-[var(--brand-space-32)]"
+            @submit.prevent="save('submit')"
+        >
             <section class="form-section">
                 <h2 class="section-title">01 · 项目与经费</h2>
-                <div class="mt-6 grid gap-5 sm:grid-cols-2">
+                <div
+                    class="mt-[var(--brand-space-24)] grid gap-[var(--brand-space-24)] sm:grid-cols-2"
+                >
                     <label class="sm:col-span-2"
                         ><span class="field-label">项目名称</span
                         ><input
@@ -221,7 +232,9 @@ function save(intent: 'draft' | 'submit') {
 
             <section class="form-section">
                 <h2 class="section-title">02 · 采购需求与技术要求</h2>
-                <div class="mt-6 grid gap-5">
+                <div
+                    class="mt-[var(--brand-space-24)] grid gap-[var(--brand-space-24)]"
+                >
                     <label
                         ><span class="field-label">采购需求</span
                         ><textarea
@@ -257,7 +270,9 @@ function save(intent: 'draft' | 'submit') {
                             >{{ form.errors.technical_parameters }}</span
                         ></label
                     >
-                    <div class="grid gap-5 sm:grid-cols-2">
+                    <div
+                        class="grid gap-[var(--brand-space-24)] sm:grid-cols-2"
+                    >
                         <label
                             ><span class="field-label">服务要求</span
                             ><textarea
@@ -297,14 +312,20 @@ function save(intent: 'draft' | 'submit') {
 
             <section class="form-section">
                 <h2 class="section-title">03 · 申请材料</h2>
-                <p class="mt-2 text-sm text-slate-500">
+                <p
+                    class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-muted)]"
+                >
                     支持 PDF、Word、Excel 和图片，单个文件不超过 20 MB。
                 </p>
-                <div class="mt-6 grid gap-5 sm:grid-cols-2">
+                <div
+                    class="mt-[var(--brand-space-24)] grid gap-[var(--brand-space-24)] sm:grid-cols-2"
+                >
                     <label
                         ><span class="field-label"
                             >采购需求书
-                            <span class="text-rose-700">*</span></span
+                            <span class="text-[var(--brand-danger)]"
+                                >*</span
+                            ></span
                         ><input
                             type="file"
                             accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
@@ -319,7 +340,9 @@ function save(intent: 'draft' | 'submit') {
                     <label
                         ><span class="field-label"
                             >预算依据附件
-                            <span class="text-rose-700">*</span></span
+                            <span class="text-[var(--brand-danger)]"
+                                >*</span
+                            ></span
                         ><input
                             type="file"
                             accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
@@ -350,24 +373,26 @@ function save(intent: 'draft' | 'submit') {
                 </div>
                 <div
                     v-if="attachments.length"
-                    class="mt-6 border-t border-slate-100 pt-5"
+                    class="mt-[var(--brand-space-24)] border-t border-[var(--brand-border)] pt-[var(--brand-space-24)]"
                 >
                     <p
-                        class="text-xs font-semibold tracking-widest text-slate-500"
+                        class="text-xs font-semibold tracking-widest text-[var(--brand-muted)]"
                     >
                         已上传材料
                     </p>
-                    <ul class="mt-3 space-y-2 text-sm">
+                    <ul
+                        class="mt-[var(--brand-space-16)] space-y-[var(--brand-space-8)] text-sm"
+                    >
                         <li
                             v-for="attachment in attachments"
                             :key="attachment.id"
                         >
                             <a
                                 :href="`/procurement/attachments/${attachment.id}/download`"
-                                class="font-medium text-emerald-800 hover:underline"
+                                class="font-medium text-[var(--brand-primary)] hover:underline"
                                 >{{ attachment.original_name }} ↗</a
                             >
-                            <span class="text-slate-400"
+                            <span class="text-[var(--brand-muted)]"
                                 >({{
                                     Math.ceil(attachment.size / 1024)
                                 }}
@@ -378,11 +403,13 @@ function save(intent: 'draft' | 'submit') {
                 </div>
             </section>
 
-            <div class="flex flex-wrap items-center gap-3">
+            <div
+                class="flex flex-wrap items-center gap-[var(--brand-space-16)]"
+            >
                 <button
                     type="button"
                     :disabled="form.processing || !departmentAssigned"
-                    class="rounded-md border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-body)] hover:bg-[var(--brand-page)] disabled:opacity-50"
                     @click="save('draft')"
                 >
                     保存草稿</button
@@ -393,11 +420,11 @@ function save(intent: 'draft' | 'submit') {
                         !departmentAssigned ||
                         budgetBelowThreshold
                     "
-                    class="rounded-md bg-emerald-800 px-6 py-3 text-sm font-medium text-white hover:bg-emerald-900 disabled:opacity-50"
+                    class="rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-card)] hover:bg-[var(--brand-primary)] disabled:opacity-50"
                 >
                     提交统一招标申请
                 </button>
-                <p class="text-xs text-slate-500">
+                <p class="text-xs text-[var(--brand-muted)]">
                     当前统一招标分界金额：{{
                         threshold.toLocaleString('zh-CN')
                     }}
@@ -410,55 +437,56 @@ function save(intent: 'draft' | 'submit') {
 
 <style scoped>
 .form-section {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--brand-border);
     border-radius: 0.5rem;
     background: white;
     padding: 1.5rem;
-    box-shadow: 0 1px 2px #0f172a08;
+    box-shadow: var(--brand-shadow);
 }
 .section-title {
     font-family: Georgia, 'Noto Serif SC', serif;
     font-size: 1.25rem;
     font-weight: 600;
-    color: #0f172a;
+    color: var(--brand-title);
 }
 .field-label {
     display: block;
     margin-bottom: 0.5rem;
     font-size: 0.875rem;
     font-weight: 600;
-    color: #334155;
+    color: var(--brand-body);
 }
 .field-input {
     display: block;
     width: 100%;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--brand-border);
     border-radius: 0.375rem;
     background: white;
     padding: 0.7rem 0.85rem;
     font-size: 0.875rem;
-    color: #0f172a;
+    color: var(--brand-title);
     outline: none;
 }
 .field-input:focus {
-    border-color: #047857;
-    box-shadow: 0 0 0 3px #04785720;
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px
+        color-mix(in srgb, var(--brand-primary) 20%, transparent);
 }
 .field-file {
     display: block;
     width: 100%;
-    border: 1px dashed #94a3b8;
+    border: 1px dashed var(--brand-muted);
     border-radius: 0.375rem;
-    background: #f8fafc;
+    background: var(--brand-page);
     padding: 0.7rem;
     font-size: 0.75rem;
-    color: #475569;
+    color: var(--brand-body);
 }
 .field-error {
     display: block;
     margin-top: 0.35rem;
     font-size: 0.75rem;
-    color: #b91c1c;
+    color: var(--brand-danger);
 }
 @media (min-width: 768px) {
     .form-section {

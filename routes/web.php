@@ -3,6 +3,7 @@
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\ApprovalTemplateController;
 use App\Http\Controllers\CentralTenderApplicationController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LegacyProcurementController;
 use App\Http\Controllers\ProcurementApplicationController;
 use App\Http\Controllers\ProcurementArchiveController;
@@ -31,7 +32,7 @@ Route::match(['get', 'post'], 'auth/cas/slo', CasSloController::class)
     ->withoutMiddleware(PreventRequestForgery::class)->name('cas.slo');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('admin/school-identities', [SchoolIdentityController::class, 'index'])->name('school-identities.index');
     Route::put('admin/school-identities/{user}', [SchoolIdentityController::class, 'update'])->name('school-identities.update');
     Route::get('admin/organization', [SchoolOrganizationController::class, 'index'])->name('organization.index');

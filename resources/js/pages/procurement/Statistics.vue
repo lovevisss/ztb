@@ -123,14 +123,15 @@ const linePoints = computed(() => {
         .join(' ');
 });
 const pieStyle = computed(() => {
-    if (props.summary.projectCount === 0) return { background: '#e2e8f0' };
+    if (props.summary.projectCount === 0)
+        return { background: 'var(--brand-border)' };
     const ratio =
         props.summary.projectCount === 0
             ? 0
             : (props.summary.selfPurchaseCount / props.summary.projectCount) *
               100;
     return {
-        background: `conic-gradient(#047857 0 ${ratio}%, #d6a649 ${ratio}% 100%)`,
+        background: `conic-gradient(var(--brand-primary) 0 ${ratio}%, var(--brand-primary-light) ${ratio}% 100%)`,
     };
 });
 const rankingMax = computed(() =>
@@ -140,40 +141,44 @@ const rankingMax = computed(() =>
 
 <template>
     <Head title="采购统计" />
-    <main class="mx-auto max-w-7xl px-5 py-8 md:px-10 md:py-12">
+    <main
+        class="mx-auto max-w-7xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
+    >
         <header
-            class="flex flex-wrap items-end justify-between gap-5 border-b border-slate-200 pb-7"
+            class="flex flex-wrap items-end justify-between gap-[var(--brand-space-24)] border-b border-[var(--brand-border)] pb-[var(--brand-space-32)]"
         >
             <div>
                 <p
-                    class="text-xs font-semibold tracking-[0.28em] text-emerald-700"
+                    class="text-xs font-semibold tracking-[0.28em] text-[var(--brand-primary)]"
                 >
                     PROCUREMENT / 数据分析
                 </p>
                 <h1
-                    class="mt-2 font-serif text-3xl font-semibold text-slate-900 md:text-4xl"
+                    class="mt-[var(--brand-space-8)] font-sans text-3xl font-semibold text-[var(--brand-title)] md:text-4xl"
                 >
                     采购数据大屏
                 </h1>
-                <p class="mt-3 text-sm text-slate-500">
+                <p
+                    class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
+                >
                     按授权范围查看项目、预算、执行与归档进度。
                 </p>
             </div>
-            <div class="flex gap-3">
+            <div class="flex gap-[var(--brand-space-16)]">
                 <Link
                     href="/procurement/history"
-                    class="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] px-[var(--brand-space-16)] py-[var(--brand-space-8)] text-sm text-[var(--brand-body)]"
                     >项目检索</Link
                 ><a
                     :href="exportUrl"
-                    class="rounded-md bg-emerald-800 px-4 py-2 text-sm font-medium text-white"
+                    class="rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-16)] py-[var(--brand-space-8)] text-sm font-medium text-[var(--brand-card)]"
                     >导出 Excel</a
                 >
             </div>
         </header>
 
         <form
-            class="mt-7 grid gap-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2 xl:grid-cols-4"
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-16)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm sm:grid-cols-2 xl:grid-cols-4"
             @submit.prevent="search"
         >
             <el-input
@@ -259,18 +264,20 @@ const rankingMax = computed(() =>
                     label="未归档"
                     value="not_archived"
             /></el-select>
-            <p v-if="filters.errors.year" class="text-xs text-red-700">
+            <p
+                v-if="filters.errors.year"
+                class="text-xs text-[var(--brand-danger)]"
+            >
                 {{ filters.errors.year }}
             </p>
-            <el-button
-                native-type="submit"
-                type="primary"
-                class="xl:col-start-4"
+            <el-button native-type="submit" class="xl:col-start-4"
                 >应用筛选</el-button
             >
         </form>
 
-        <div class="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-16)] sm:grid-cols-2 xl:grid-cols-4"
+        >
             <div
                 v-for="card in [
                     {
@@ -295,21 +302,23 @@ const rankingMax = computed(() =>
                     },
                 ]"
                 :key="card.label"
-                class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
-                <p class="text-xs tracking-wide text-slate-500">
+                <p class="text-xs tracking-wide text-[var(--brand-muted)]">
                     {{ card.label }}
                 </p>
-                <p class="mt-3 font-serif text-3xl text-slate-900">
+                <p
+                    class="mt-[var(--brand-space-16)] font-sans text-3xl text-[var(--brand-title)]"
+                >
                     {{ card.value }}
-                    <span class="text-base text-slate-500">{{
+                    <span class="text-base text-[var(--brand-muted)]">{{
                         card.unit
                     }}</span>
                 </p>
             </div>
         </div>
         <div
-            class="mt-4 flex flex-wrap gap-6 rounded-lg bg-emerald-950 px-6 py-4 text-sm text-emerald-50"
+            class="mt-[var(--brand-space-16)] flex flex-wrap gap-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-card)]"
         >
             <span
                 >自行采购
@@ -325,25 +334,27 @@ const rankingMax = computed(() =>
             >
         </div>
 
-        <div class="mt-7 grid gap-6 lg:grid-cols-2">
+        <div
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-24)] lg:grid-cols-2"
+        >
             <section
-                class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
-                <h2 class="font-serif text-xl text-slate-900">
+                <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     {{ props.filters.year ? '月度趋势' : '年度趋势' }}
                 </h2>
-                <div v-if="trendData.length" class="mt-5">
+                <div v-if="trendData.length" class="mt-[var(--brand-space-24)]">
                     <svg
                         viewBox="0 0 640 180"
                         role="img"
                         aria-label="采购项目数量折线图"
                         class="w-full"
                     >
-                        <path d="M28 160H612" stroke="#cbd5e1" />
+                        <path d="M28 160H612" stroke="var(--brand-border)" />
                         <polyline
                             :points="linePoints"
                             fill="none"
-                            stroke="#047857"
+                            stroke="var(--brand-primary)"
                             stroke-width="3"
                             stroke-linecap="round"
                             stroke-linejoin="round"
@@ -368,55 +379,72 @@ const rankingMax = computed(() =>
                                     )
                             "
                             r="5"
-                            fill="#047857"
+                            fill="var(--brand-primary)"
                         />
                     </svg>
-                    <div class="flex justify-between text-xs text-slate-500">
+                    <div
+                        class="flex justify-between text-xs text-[var(--brand-muted)]"
+                    >
                         <span v-for="item in trendData" :key="item.period"
                             >{{ item.period }} · {{ item.count }} 项</span
                         >
                     </div>
                 </div>
-                <p v-else class="mt-8 text-sm text-slate-400">暂无趋势数据</p>
+                <p
+                    v-else
+                    class="mt-[var(--brand-space-32)] text-sm text-[var(--brand-muted)]"
+                >
+                    暂无趋势数据
+                </p>
             </section>
             <section
-                class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
-                <h2 class="font-serif text-xl text-slate-900">采购类型分布</h2>
-                <div class="mt-7 flex items-center gap-8">
+                <h2 class="font-sans text-xl text-[var(--brand-title)]">
+                    采购类型分布
+                </h2>
+                <div
+                    class="mt-[var(--brand-space-32)] flex items-center gap-[var(--brand-space-32)]"
+                >
                     <div
                         class="size-36 shrink-0 rounded-full"
                         :style="pieStyle"
                         role="img"
                         aria-label="自行采购与统一招标比例饼图"
                     />
-                    <div class="space-y-4 text-sm">
+                    <div class="space-y-[var(--brand-space-16)] text-sm">
                         <p>
                             <span
-                                class="mr-2 inline-block size-3 rounded-sm bg-emerald-700"
+                                class="mr-[var(--brand-space-8)] inline-block size-3 rounded-sm bg-[var(--brand-primary)]"
                             />自行采购 {{ summary.selfPurchaseCount }}
                         </p>
                         <p>
                             <span
-                                class="mr-2 inline-block size-3 rounded-sm bg-amber-500"
+                                class="mr-[var(--brand-space-8)] inline-block size-3 rounded-sm bg-[var(--brand-warning)]"
                             />统一招标 {{ summary.centralTenderCount }}
                         </p>
                     </div>
                 </div>
             </section>
             <section
-                class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
-                <h2 class="font-serif text-xl text-slate-900">部门采购排行</h2>
-                <ol class="mt-5 space-y-4">
+                <h2 class="font-sans text-xl text-[var(--brand-title)]">
+                    部门采购排行
+                </h2>
+                <ol
+                    class="mt-[var(--brand-space-24)] space-y-[var(--brand-space-16)]"
+                >
                     <li v-for="item in departmentRanking" :key="item.label">
                         <div class="flex justify-between text-sm">
                             <span>{{ item.label }}</span
                             ><strong>{{ item.count }} 项</strong>
                         </div>
-                        <div class="mt-2 h-2 rounded-full bg-slate-100">
+                        <div
+                            class="mt-[var(--brand-space-8)] h-2 rounded-full bg-[var(--brand-page)]"
+                        >
                             <div
-                                class="h-2 rounded-full bg-emerald-700"
+                                class="h-2 rounded-full bg-[var(--brand-primary)]"
                                 :style="{
                                     width: `${(item.count / rankingMax) * 100}%`,
                                 }"
@@ -426,14 +454,18 @@ const rankingMax = computed(() =>
                 </ol>
             </section>
             <section
-                class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
-                <h2 class="font-serif text-xl text-slate-900">采购方式分布</h2>
-                <div class="mt-5 space-y-3">
+                <h2 class="font-sans text-xl text-[var(--brand-title)]">
+                    采购方式分布
+                </h2>
+                <div
+                    class="mt-[var(--brand-space-24)] space-y-[var(--brand-space-16)]"
+                >
                     <div
                         v-for="item in byPurchaseMethod"
                         :key="item.label"
-                        class="flex justify-between border-b border-slate-100 pb-3 text-sm"
+                        class="flex justify-between border-b border-[var(--brand-border)] pb-[var(--brand-space-16)] text-sm"
                     >
                         <span>{{ item.label }}</span
                         ><strong>{{ item.count }} 项</strong>
@@ -443,16 +475,18 @@ const rankingMax = computed(() =>
         </div>
 
         <section
-            class="mt-7 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
         >
-            <h2 class="font-serif text-xl text-slate-900">统计明细</h2>
-            <div class="mt-5 overflow-x-auto">
+            <h2 class="font-sans text-xl text-[var(--brand-title)]">
+                统计明细
+            </h2>
+            <div class="mt-[var(--brand-space-24)] overflow-x-auto">
                 <table class="w-full min-w-[850px] text-left text-sm">
                     <thead
-                        class="border-b border-slate-200 text-xs text-slate-500"
+                        class="border-b border-[var(--brand-border)] text-xs text-[var(--brand-muted)]"
                     >
                         <tr>
-                            <th class="py-3">项目</th>
+                            <th class="py-[var(--brand-space-16)]">项目</th>
                             <th>部门 / 归口</th>
                             <th>采购方式</th>
                             <th>状态</th>
@@ -460,15 +494,17 @@ const rankingMax = computed(() =>
                             <th class="text-right">实际</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-[var(--brand-border)]">
                         <tr v-for="item in records" :key="item.id">
-                            <td class="py-4">
+                            <td class="py-[var(--brand-space-16)]">
                                 <Link
                                     :href="`/procurement/applications/${item.id}`"
-                                    class="font-medium text-emerald-800 hover:underline"
+                                    class="font-medium text-[var(--brand-primary)] hover:underline"
                                     >{{ item.title }}</Link
                                 >
-                                <p class="font-mono text-xs text-slate-400">
+                                <p
+                                    class="font-mono text-xs text-[var(--brand-muted)]"
+                                >
                                     {{ item.project_number }}
                                 </p>
                             </td>
@@ -491,13 +527,15 @@ const rankingMax = computed(() =>
                 </table>
                 <p
                     v-if="records.length === 0"
-                    class="py-12 text-center text-sm text-slate-400"
+                    class="py-[var(--brand-space-32)] text-center text-sm text-[var(--brand-muted)]"
                 >
                     没有符合条件的项目
                 </p>
             </div>
         </section>
-        <section class="mt-7 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <section
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-16)] text-sm sm:grid-cols-2 lg:grid-cols-3"
+        >
             <div
                 v-for="block in [
                     { title: '归口部门', data: byResponsibleDepartment },
@@ -508,15 +546,15 @@ const rankingMax = computed(() =>
                     { title: '归档状态', data: byArchiveStatus },
                 ]"
                 :key="block.title"
-                class="rounded-lg border border-slate-200 bg-white p-5"
+                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
             >
-                <h3 class="font-serif text-lg text-slate-900">
+                <h3 class="font-sans text-lg text-[var(--brand-title)]">
                     {{ block.title }}
                 </h3>
                 <p
                     v-for="item in block.data"
                     :key="item.label"
-                    class="mt-3 flex justify-between text-slate-600"
+                    class="mt-[var(--brand-space-16)] flex justify-between text-[var(--brand-body)]"
                 >
                     <span>{{
                         statusLabels[item.label] ??

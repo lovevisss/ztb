@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import Heading from '@/components/Heading.vue';
 import { edit } from '@/routes/appearance';
 
@@ -8,7 +7,7 @@ defineOptions({
     layout: {
         breadcrumbs: [
             {
-                title: 'Appearance settings',
+                title: '界面外观',
                 href: edit(),
             },
         ],
@@ -17,16 +16,15 @@ defineOptions({
 </script>
 
 <template>
-    <Head title="Appearance settings" />
+    <Head title="界面外观" />
 
-    <h1 class="sr-only">Appearance settings</h1>
+    <h1 class="sr-only">界面外观</h1>
 
-    <div class="space-y-6">
+    <div class="space-y-[var(--brand-space-24)]">
         <Heading
             variant="small"
-            title="Appearance settings"
-            description="Update the appearance settings for your account"
+            title="界面外观"
+            description="管理后台统一使用浅色界面，以保证数据与表单的清晰度。"
         />
-        <AppearanceTabs />
     </div>
 </template>

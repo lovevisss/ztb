@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { Monitor, Moon, Sun } from '@lucide/vue';
+import {
+    IconDeviceDesktop as Monitor,
+    IconMoon as Moon,
+    IconSun as Sun,
+} from '@tabler/icons-vue';
 import { useAppearance } from '@/composables/useAppearance';
 
 const { appearance, updateAppearance } = useAppearance();

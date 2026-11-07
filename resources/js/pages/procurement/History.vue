@@ -56,37 +56,47 @@ const statusLabel: Record<string, string> = {
 
 <template>
     <Head title="历史采购项目" />
-    <main class="mx-auto w-full max-w-6xl px-5 py-8 md:px-10 md:py-12">
-        <header class="border-b border-slate-200 pb-7">
+    <main
+        class="mx-auto w-full max-w-6xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
+    >
+        <header
+            class="border-b border-[var(--brand-border)] pb-[var(--brand-space-32)]"
+        >
             <p
-                class="mb-2 text-xs font-semibold tracking-[0.28em] text-emerald-700"
+                class="mb-[var(--brand-space-8)] text-xs font-semibold tracking-[0.28em] text-[var(--brand-primary)]"
             >
                 ARCHIVE / 项目检索
             </p>
             <h1
-                class="font-serif text-3xl font-semibold text-slate-900 md:text-4xl"
+                class="font-sans text-3xl font-semibold text-[var(--brand-title)] md:text-4xl"
             >
                 历史采购项目
             </h1>
-            <p class="mt-3 text-sm text-slate-500">
+            <p
+                class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
+            >
                 查阅授权范围内的项目，复制申请资料以发起新项目。
             </p>
         </header>
         <Link
             href="/procurement/statistics"
-            class="mt-4 mr-5 inline-block text-sm text-emerald-800 underline"
+            class="mt-[var(--brand-space-16)] mr-[var(--brand-space-24)] inline-block text-sm text-[var(--brand-primary)] underline"
             >采购数据大屏 →</Link
         >
-        <Link href="/procurement/legacy-history" class="mt-4 mr-5 inline-block text-sm text-emerald-800 underline">旧系统历史档案 →</Link>
+        <Link
+            href="/procurement/legacy-history"
+            class="mt-[var(--brand-space-16)] mr-[var(--brand-space-24)] inline-block text-sm text-[var(--brand-primary)] underline"
+            >旧系统历史档案 →</Link
+        >
         <Link
             v-if="canManageArchiveRules"
             href="/procurement/archive-rules"
-            class="mt-4 inline-block text-sm text-emerald-800 underline"
+            class="mt-[var(--brand-space-16)] inline-block text-sm text-[var(--brand-primary)] underline"
             >归档材料规则 →</Link
         >
 
         <form
-            class="mt-8 grid gap-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-[2fr_1fr_1fr_1fr_auto]"
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-16)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm md:grid-cols-[2fr_1fr_1fr_1fr_auto]"
             @submit.prevent="search"
         >
             <el-input
@@ -130,57 +140,95 @@ const statusLabel: Record<string, string> = {
             <el-button native-type="submit" type="primary">查询</el-button>
         </form>
 
-        <div class="mt-5 text-xs text-slate-500">
+        <div
+            class="mt-[var(--brand-space-24)] text-xs text-[var(--brand-muted)]"
+        >
             共 {{ projects.total }} 个项目
         </div>
         <div
             v-if="projects.data.length === 0"
-            class="mt-4 rounded-lg border border-dashed border-slate-300 bg-stone-50 px-6 py-16 text-center text-slate-500"
+            class="mt-[var(--brand-space-16)] rounded-[var(--brand-radius-md)] border border-dashed border-[var(--brand-border)] bg-[var(--brand-page)] px-[var(--brand-space-24)] py-[var(--brand-space-32)] text-center text-[var(--brand-muted)]"
         >
             没有符合条件的项目
         </div>
         <div
             v-else
-            class="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm"
+            class="mt-[var(--brand-space-16)] overflow-x-auto rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] shadow-sm"
         >
             <table class="w-full min-w-[720px] text-left text-sm">
-                <thead class="bg-slate-50 text-xs font-semibold text-slate-500">
+                <thead
+                    class="bg-[var(--brand-page)] text-xs font-semibold text-[var(--brand-muted)]"
+                >
                     <tr>
-                        <th class="px-5 py-4">项目</th>
-                        <th class="px-5 py-4">预算</th>
-                        <th class="px-5 py-4">采购方式</th>
-                        <th class="px-5 py-4">状态</th>
-                        <th class="px-5 py-4">操作</th>
+                        <th
+                            class="px-[var(--brand-space-24)] py-[var(--brand-space-16)]"
+                        >
+                            项目
+                        </th>
+                        <th
+                            class="px-[var(--brand-space-24)] py-[var(--brand-space-16)]"
+                        >
+                            预算
+                        </th>
+                        <th
+                            class="px-[var(--brand-space-24)] py-[var(--brand-space-16)]"
+                        >
+                            采购方式
+                        </th>
+                        <th
+                            class="px-[var(--brand-space-24)] py-[var(--brand-space-16)]"
+                        >
+                            状态
+                        </th>
+                        <th
+                            class="px-[var(--brand-space-24)] py-[var(--brand-space-16)]"
+                        >
+                            操作
+                        </th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody class="divide-y divide-[var(--brand-border)]">
                     <tr v-for="project in projects.data" :key="project.id">
-                        <td class="px-5 py-5">
+                        <td
+                            class="px-[var(--brand-space-24)] py-[var(--brand-space-24)]"
+                        >
                             <Link
                                 :href="
                                     project.status === 'archived'
                                         ? `/procurement/applications/${project.id}/archive`
                                         : `/procurement/applications/${project.id}`
                                 "
-                                class="font-medium text-slate-900 hover:text-emerald-800 hover:underline"
+                                class="font-medium text-[var(--brand-title)] hover:text-[var(--brand-primary)] hover:underline"
                                 >{{ project.title }}</Link
                             >
-                            <div class="mt-1 font-mono text-xs text-slate-400">
+                            <div
+                                class="mt-[var(--brand-space-8)] font-mono text-xs text-[var(--brand-muted)]"
+                            >
                                 {{ project.project_number }}
                             </div>
                         </td>
-                        <td class="px-5 py-5 tabular-nums">
+                        <td
+                            class="px-[var(--brand-space-24)] py-[var(--brand-space-24)] tabular-nums"
+                        >
                             ¥{{
                                 (project.budget_cents / 100).toLocaleString(
                                     'zh-CN',
                                 )
                             }}
                         </td>
-                        <td class="px-5 py-5">{{ project.purchase_method }}</td>
-                        <td class="px-5 py-5">
+                        <td
+                            class="px-[var(--brand-space-24)] py-[var(--brand-space-24)]"
+                        >
+                            {{ project.purchase_method }}
+                        </td>
+                        <td
+                            class="px-[var(--brand-space-24)] py-[var(--brand-space-24)]"
+                        >
                             {{ statusLabel[project.status] ?? project.status }}
                         </td>
-                        <td class="px-5 py-5">
+                        <td
+                            class="px-[var(--brand-space-24)] py-[var(--brand-space-24)]"
+                        >
                             <el-button size="small" @click="copy(project.id)"
                                 >复制为新申请</el-button
                             >
@@ -191,7 +239,7 @@ const statusLabel: Record<string, string> = {
         </div>
         <nav
             v-if="projects.links.length > 3"
-            class="mt-6 flex flex-wrap gap-2"
+            class="mt-[var(--brand-space-24)] flex flex-wrap gap-[var(--brand-space-8)]"
             aria-label="分页"
         >
             <Link
@@ -199,11 +247,11 @@ const statusLabel: Record<string, string> = {
                 :key="index"
                 v-show="link.url"
                 :href="link.url ?? '#'"
-                class="rounded border px-3 py-1 text-sm"
+                class="rounded border px-[var(--brand-space-16)] py-[var(--brand-space-8)] text-sm"
                 :class="
                     link.active
-                        ? 'border-emerald-700 bg-emerald-50 text-emerald-800'
-                        : 'border-slate-200 text-slate-600'
+                        ? 'border-[var(--brand-primary)] bg-[var(--brand-primary-light)] text-[var(--brand-primary)]'
+                        : 'border-[var(--brand-border)] text-[var(--brand-body)]'
                 "
                 >{{ paginationLabel(link.label) }}</Link
             >
