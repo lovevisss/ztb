@@ -54,6 +54,25 @@ class CentralTenderApplicationTest extends TestCase
         ];
     }
 
+    public function test_new_tender_shows_policy_before_the_form_while_editing_opens_the_form(): void
+    {
+        $applicant = $this->applicant();
+
+        $this->actingAs($applicant)->get(route('procurement.tenders.create'))
+            ->assertSuccessful()->assertInertia(fn ($page) => $page->component('procurement/TenderPolicy'));
+
+        $this->actingAs($applicant)->get(route('procurement.tenders.create-form'))
+            ->assertSuccessful()->assertInertia(fn ($page) => $page->component('procurement/TenderForm')->where('application', null));
+
+        $this->actingAs($applicant)->post(route('procurement.tenders.store'), [
+            'intent' => 'draft', 'title' => '待完善的统一招标',
+        ])->assertRedirect();
+        $applicationId = DB::table('procurement_applications')->value('id');
+
+        $this->actingAs($applicant)->get(route('procurement.tenders.edit', $applicationId))
+            ->assertSuccessful()->assertInertia(fn ($page) => $page->component('procurement/TenderForm'));
+    }
+
     public function test_tender_submission_requires_detailed_fields_and_required_documents(): void
     {
         $this->actingAs($this->applicant())->post(route('procurement.tenders.store'), [

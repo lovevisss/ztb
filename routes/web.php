@@ -44,6 +44,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('procurement/applications/{application}/edit', [ProcurementApplicationController::class, 'edit'])->name('procurement.applications.edit');
     Route::put('procurement/applications/{application}', [ProcurementApplicationController::class, 'update'])->name('procurement.applications.update');
     Route::get('procurement/tenders/create', [CentralTenderApplicationController::class, 'create'])->name('procurement.tenders.create');
+    Route::get('procurement/tenders/create/form', [CentralTenderApplicationController::class, 'createForm'])->name('procurement.tenders.create-form');
     Route::post('procurement/tenders', [CentralTenderApplicationController::class, 'store'])->name('procurement.tenders.store');
     Route::get('procurement/tenders/{application}/edit', [CentralTenderApplicationController::class, 'edit'])->name('procurement.tenders.edit');
     Route::put('procurement/tenders/{application}', [CentralTenderApplicationController::class, 'update'])->name('procurement.tenders.update');

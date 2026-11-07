@@ -20,6 +20,11 @@ class CentralTenderApplicationController extends Controller
 {
     public function create(Request $request): Response
     {
+        return Inertia::render('procurement/TenderPolicy');
+    }
+
+    public function createForm(Request $request): Response
+    {
         return $this->form($request);
     }
 
