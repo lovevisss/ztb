@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProcurementApplication;
 use App\Services\ProcurementAccess;
+use App\Services\TenderNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -38,12 +39,12 @@ class ProcurementHistoryController extends Controller
         ]);
     }
 
-    public function copy(Request $request, ProcurementApplication $application, ProcurementAccess $access): RedirectResponse
+    public function copy(Request $request, ProcurementApplication $application, ProcurementAccess $access, TenderNumber $numbers): RedirectResponse
     {
         abort_unless($application->status !== 'draft' && $access->canView($request->user(), $application), 403);
         abort_if($request->user()->department_id === null, 422, '当前用户尚未关联部门');
 
-        $copy = DB::transaction(function () use ($request, $application) {
+        $copy = DB::transaction(function () use ($request, $application, $numbers) {
             $copy = ProcurementApplication::create([
                 ...$application->only([
                     'title', 'budget_cents', 'funding_source', 'organization_form', 'purchase_method',
@@ -58,7 +59,9 @@ class ProcurementHistoryController extends Controller
             ]);
 
             $copy->update([
-                'project_number' => 'CG'.now()->format('Y').'-'.str_pad((string) $copy->id, 6, '0', STR_PAD_LEFT),
+                'project_number' => $copy->application_form === 'central_tender'
+                    ? $numbers->next()
+                    : 'CG'.now()->format('Y').'-'.str_pad((string) $copy->id, 6, '0', STR_PAD_LEFT),
             ]);
 
             return $copy;

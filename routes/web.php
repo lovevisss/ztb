@@ -3,6 +3,7 @@
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\ApprovalTemplateController;
 use App\Http\Controllers\CentralTenderApplicationController;
+use App\Http\Controllers\TenderSectionsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LegacyProcurementController;
 use App\Http\Controllers\ProcurementApplicationController;
@@ -44,7 +45,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('procurement/applications/{application}/edit', [ProcurementApplicationController::class, 'edit'])->name('procurement.applications.edit');
     Route::put('procurement/applications/{application}', [ProcurementApplicationController::class, 'update'])->name('procurement.applications.update');
     Route::get('procurement/tenders/create', [CentralTenderApplicationController::class, 'create'])->name('procurement.tenders.create');
-    Route::get('procurement/tenders/create/form', [CentralTenderApplicationController::class, 'createForm'])->name('procurement.tenders.create-form');
+    Route::get('procurement/tenders/create/form', [CentralTenderApplicationController::class, 'newForm'])->name('procurement.tenders.new-form');
+    Route::post('procurement/tenders/sections', [TenderSectionsController::class, 'create'])->name('procurement.tenders.sections.create');
+    Route::post('procurement/tenders/{application}/sections', [TenderSectionsController::class, 'update'])->name('procurement.tenders.sections.update');
+    Route::post('procurement/tenders/{application}/submit', [TenderSectionsController::class, 'submit'])->name('procurement.tenders.sections.submit');
+    Route::post('procurement/catalog', [TenderSectionsController::class, 'catalogStore'])->name('procurement.catalog.store');
+    Route::put('procurement/catalog/{item}', [TenderSectionsController::class, 'catalogUpdate'])->name('procurement.catalog.update');
+    Route::delete('procurement/catalog/{item}', [TenderSectionsController::class, 'catalogDelete'])->name('procurement.catalog.delete');
+    Route::post('procurement/budgets/sync', [TenderSectionsController::class, 'syncBudgets'])->name('procurement.budgets.sync');
     Route::post('procurement/tenders', [CentralTenderApplicationController::class, 'store'])->name('procurement.tenders.store');
     Route::get('procurement/tenders/{application}/edit', [CentralTenderApplicationController::class, 'edit'])->name('procurement.tenders.edit');
     Route::put('procurement/tenders/{application}', [CentralTenderApplicationController::class, 'update'])->name('procurement.tenders.update');

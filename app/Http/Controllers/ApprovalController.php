@@ -44,6 +44,9 @@ class ApprovalController extends Controller
             'steps' => DB::table('approval_steps')->where('application_id', $application->id)->orderBy('attempt')->orderBy('position')->get(),
             'events' => DB::table('approval_events')->where('application_id', $application->id)->orderBy('id')->get(),
             'attachments' => DB::table('procurement_attachments')->where('application_id', $application->id)->get(['id', 'kind', 'original_name']),
+            'lineItems' => DB::table('procurement_line_items')->where('application_id', $application->id)->orderBy('position')->get(),
+            'budgetAllocations' => DB::table('procurement_budget_allocations')->where('application_id', $application->id)->get(),
+            'usageDepartmentName' => $application->usage_department_id === null ? null : DB::table('departments')->where('id', $application->usage_department_id)->value('name'),
             'execution' => DB::table('procurement_executions')->where('application_id', $application->id)->first(),
             'canArchive' => $application->status === 'execution_completed' && $access->canExecute($request->user(), $application),
             'missingArchiveMaterials' => $application->status === 'execution_completed'

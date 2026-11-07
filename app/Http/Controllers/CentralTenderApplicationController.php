@@ -23,7 +23,7 @@ class CentralTenderApplicationController extends Controller
         return Inertia::render('procurement/TenderPolicy');
     }
 
-    public function createForm(Request $request): Response
+    public function newForm(Request $request): Response
     {
         return $this->form($request);
     }
@@ -93,6 +93,14 @@ class CentralTenderApplicationController extends Controller
                 ->get(['id', 'kind', 'original_name', 'size']),
             'departmentAssigned' => $request->user()->department_id !== null,
             'threshold' => ProcurementClassificationRule::effectiveFor($request->user()->department_id)->threshold_cents / 100,
+            'applicantName' => $request->user()->name,
+            'departmentName' => DB::table('departments')->where('id', $request->user()->department_id)->value('name'),
+            'departments' => DB::table('departments')->orderBy('name')->get(['id', 'name']),
+            'items' => $application === null ? [] : DB::table('procurement_line_items')->where('application_id', $application->id)->orderBy('position')->get(),
+            'allocations' => $application === null ? [] : DB::table('procurement_budget_allocations')->where('application_id', $application->id)->get(),
+            'indicators' => DB::table('budget_indicators')->where('status', '1')->orderBy('name')->get(['id', 'code', 'name', 'director', 'available_cents']),
+            'catalog' => DB::table('personal_catalog_items')->where('user_id', $request->user()->id)->orderBy('name')->get(),
+            'canSyncBudgets' => $request->user()->hasAnyRole(['procurement_manager', 'system_admin']),
         ]);
     }
 

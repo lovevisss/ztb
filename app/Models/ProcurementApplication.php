@@ -16,10 +16,12 @@ class ProcurementApplication extends Model
         'approval_template_id', 'approval_attempt',
         'source_application_id',
         'executor_id',
+        'category', 'contact_phone', 'is_special_purchase', 'is_non_expenditure',
+        'has_usage_department', 'usage_department_id', 'remarks',
     ];
 
     protected function casts(): array
     {
-        return ['is_fixed_asset' => 'boolean', 'submitted_at' => 'datetime'];
+        return ['is_fixed_asset' => 'boolean', 'is_special_purchase' => 'boolean', 'is_non_expenditure' => 'boolean', 'has_usage_department' => 'boolean', 'submitted_at' => 'datetime'];
     }
 }

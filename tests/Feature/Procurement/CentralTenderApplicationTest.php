@@ -61,7 +61,7 @@ class CentralTenderApplicationTest extends TestCase
         $this->actingAs($applicant)->get(route('procurement.tenders.create'))
             ->assertSuccessful()->assertInertia(fn ($page) => $page->component('procurement/TenderPolicy'));
 
-        $this->actingAs($applicant)->get(route('procurement.tenders.create-form'))
+        $this->actingAs($applicant)->get(route('procurement.tenders.new-form'))
             ->assertSuccessful()->assertInertia(fn ($page) => $page->component('procurement/TenderForm')->where('application', null));
 
         $this->actingAs($applicant)->post(route('procurement.tenders.store'), [

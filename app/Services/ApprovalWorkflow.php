@@ -45,6 +45,19 @@ class ApprovalWorkflow
             $resolved[] = ['position' => $step->position, 'role_code' => $step->role_code, 'assignee_id' => $assigneeId];
         }
 
+        if ($application->application_form === 'central_tender' && $application->has_usage_department && $application->usage_department_id !== null) {
+            $head = DB::table('users')->join('role_user', 'role_user.user_id', '=', 'users.id')
+                ->join('roles', 'roles.id', '=', 'role_user.role_id')
+                ->where('roles.code', 'department_head')->where('users.department_id', $application->usage_department_id)
+                ->where('users.is_active', true)->orderBy('users.id')->value('users.id');
+            if ($head === null) {
+                throw ValidationException::withMessages(['usage_department_id' => '使用部门尚无有效负责人，请联系管理员。']);
+            }
+            if ((int) $head !== $resolved[0]['assignee_id']) {
+                array_unshift($resolved, ['position' => 0, 'role_code' => 'usage_department_head', 'assignee_id' => (int) $head]);
+            }
+        }
+
         $attempt = $application->approval_attempt + 1;
         $application->update([
             'status' => 'submitted',
@@ -58,7 +71,7 @@ class ApprovalWorkflow
                 'application_id' => $application->id,
                 'template_id' => $template->id,
                 'attempt' => $attempt,
-                'position' => $step['position'],
+                'position' => $index + 1,
                 'role_code' => $step['role_code'],
                 'assignee_id' => $step['assignee_id'],
                 'status' => $index === 0 ? 'pending' : 'queued',

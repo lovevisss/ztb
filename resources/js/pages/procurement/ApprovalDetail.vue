@@ -22,6 +22,11 @@ type Application = {
     service_requirements: string | null;
     acceptance_criteria: string | null;
     budget_basis_note: string | null;
+    category: string | null;
+    contact_phone: string | null;
+    is_special_purchase: boolean;
+    is_non_expenditure: boolean;
+    remarks: string | null;
 };
 type Step = {
     id: number;
@@ -53,6 +58,9 @@ const props = defineProps<{
     steps: Step[];
     events: Event[];
     attachments: Attachment[];
+    lineItems: { id: number; name: string; specification: string | null; quantity: number; unit: string | null; unit_price_cents: number; total_cents: number; remarks: string | null }[];
+    budgetAllocations: { id: number; code: string | null; name: string; director: string | null; amount_cents: number }[];
+    usageDepartmentName: string | null;
     execution: {
         actual_amount_cents: number | null;
         supplier: string | null;
@@ -104,6 +112,7 @@ const archiveKindLabel: Record<string, string> = {
 
 const roleLabel: Record<string, string> = {
     department_head: '部门负责人',
+    usage_department_head: '使用部门负责人',
     procurement_manager: '采购管理部门',
     responsible_department: '归口部门',
     finance: '财务人员',
@@ -301,6 +310,15 @@ const statusLabel: Record<string, string> = {
                             </dd>
                         </div>
                     </dl>
+                    <div v-if="application.category || lineItems.length" class="mt-6 border-t border-[var(--brand-border)] pt-5 text-sm">
+                        <p>归属：{{ application.category }}　经办人电话：{{ application.contact_phone }}　使用部门：{{ usageDepartmentName ?? '无' }}</p>
+                        <p class="mt-2">特殊采购：{{ application.is_special_purchase ? '是' : '否' }}　非支出项目：{{ application.is_non_expenditure ? '是' : '否' }}</p>
+                        <p v-if="application.remarks" class="mt-2 whitespace-pre-wrap">备注：{{ application.remarks }}</p>
+                        <h3 class="mt-5 font-semibold">采购清单</h3>
+                        <div class="mt-2 overflow-x-auto"><table class="w-full min-w-[600px] text-left"><thead><tr class="border-b border-[var(--brand-border)]"><th>名称</th><th>技术参数</th><th>数量</th><th>单价（元）</th><th>总价（元）</th></tr></thead><tbody><tr v-for="item in lineItems" :key="item.id" class="border-b border-[var(--brand-border)]"><td>{{ item.name }}</td><td>{{ item.specification }}</td><td>{{ item.quantity }} {{ item.unit }}</td><td>{{ (item.unit_price_cents / 100).toFixed(2) }}</td><td>{{ (item.total_cents / 100).toFixed(2) }}</td></tr></tbody></table></div>
+                        <h3 class="mt-5 font-semibold">项目预算指标</h3>
+                        <ul class="mt-2 space-y-1"><li v-for="allocation in budgetAllocations" :key="allocation.id">{{ allocation.code }} · {{ allocation.name }} · {{ allocation.director }}：¥{{ (allocation.amount_cents / 100).toFixed(2) }}</li></ul>
+                    </div>
                     <div
                         v-if="attachments.length"
                         class="mt-[var(--brand-space-24)] border-t border-[var(--brand-border)] pt-[var(--brand-space-24)]"
