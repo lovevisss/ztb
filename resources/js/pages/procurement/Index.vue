@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 type Application = {
     id: number;
@@ -19,9 +20,29 @@ type LegacyApplication = {
     amount_cents: number | null;
     status: string | null;
     occurred_at: string | null;
+    submitted_at: string | null;
+    department_name: string | null;
 };
 
-defineProps<{ applications: Application[]; legacyApplications: LegacyApplication[] }>();
+const props = defineProps<{ applications: Application[]; legacyApplications: LegacyApplication[] }>();
+const activeTab = ref<'submitted' | 'draft'>('submitted');
+const search = ref('');
+const page = ref(1);
+const pageSize = 15;
+const draftCount = computed(() => props.legacyApplications.filter((item) => item.status === '未提交').length);
+const submittedCount = computed(() => props.legacyApplications.length - draftCount.value);
+const filteredLegacy = computed(() => {
+    const term = search.value.trim().toLocaleLowerCase();
+    return props.legacyApplications.filter((item) => {
+        const matchesTab = activeTab.value === 'draft' ? item.status === '未提交' : item.status !== '未提交';
+        return matchesTab && (!term || [item.number, item.title, item.department_name, item.status]
+            .some((value) => value?.toLocaleLowerCase().includes(term)));
+    });
+});
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredLegacy.value.length / pageSize)));
+const visibleLegacy = computed(() => filteredLegacy.value.slice((page.value - 1) * pageSize, page.value * pageSize));
+function selectTab(tab: 'submitted' | 'draft') { activeTab.value = tab; page.value = 1; }
+function resetSearch() { search.value = ''; page.value = 1; }
 
 const currency = (cents: number | null) =>
     cents === null
@@ -174,26 +195,40 @@ const statusLabel: Record<string, string> = {
         </div>
 
         <section v-if="legacyApplications.length > 0" class="mt-9">
-            <h2 class="font-serif text-xl font-semibold text-slate-900">旧系统申请</h2>
-            <p class="mt-1 text-sm text-slate-500">共 {{ legacyApplications.length }} 条，只读查看，不进入新系统审批流程。</p>
-            <div class="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-                <table class="w-full min-w-[680px] text-left text-sm">
+            <div class="flex flex-wrap items-end justify-between gap-4">
+                <div><p class="text-xs font-semibold tracking-[0.18em] text-emerald-700">LEGACY RECORDS / 历史档案</p><h2 class="mt-2 font-serif text-2xl font-semibold text-slate-900">旧系统申请</h2><p class="mt-1 text-sm text-slate-500">共 {{ legacyApplications.length }} 条，只读查看，不进入新系统审批流程。</p></div>
+                <span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-800">历史数据 · 仅供查阅</span>
+            </div>
+            <div class="mt-5 rounded-lg border border-slate-200 bg-white shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 px-5 pt-3">
+                    <div class="flex gap-6 text-sm font-medium">
+                        <button type="button" :class="['border-b-2 px-1 pb-3 pt-2', activeTab === 'draft' ? 'border-emerald-700 text-emerald-800' : 'border-transparent text-slate-500 hover:text-slate-800']" @click="selectTab('draft')">未提交 <span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs">{{ draftCount }}</span></button>
+                        <button type="button" :class="['border-b-2 px-1 pb-3 pt-2', activeTab === 'submitted' ? 'border-emerald-700 text-emerald-800' : 'border-transparent text-slate-500 hover:text-slate-800']" @click="selectTab('submitted')">已提交 <span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs">{{ submittedCount }}</span></button>
+                    </div>
+                    <div class="mb-3 flex items-center gap-2"><input v-model="search" type="search" placeholder="搜索编号、名称、部门或状态" aria-label="搜索旧系统申请" class="w-60 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700" @input="page = 1" /><button type="button" class="text-sm text-slate-500 hover:text-emerald-800" @click="resetSearch">重置</button></div>
+                </div>
+                <div class="overflow-x-auto">
+                <table class="w-full min-w-[900px] text-left text-sm">
                     <thead class="bg-slate-50 text-xs font-semibold tracking-widest text-slate-500">
-                        <tr><th class="px-5 py-4">项目</th><th>预算</th><th>原状态</th><th>日期</th><th>操作</th></tr>
+                        <tr><th class="px-5 py-4">项目编号 / 名称</th><th>申报部门</th><th>申请金额</th><th>提交日期</th><th>流程状态</th><th>操作</th></tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        <tr v-for="item in legacyApplications" :key="item.source_id" class="text-slate-700">
+                        <tr v-for="item in visibleLegacy" :key="item.source_id" class="text-slate-700 transition-colors hover:bg-emerald-50/40">
                             <td class="px-5 py-4">
-                                <Link :href="`/procurement/legacy-history/${encodeURIComponent(item.source_id)}`" class="font-medium text-slate-900 hover:text-emerald-800 hover:underline">{{ item.title || '未命名项目' }}</Link>
-                                <div class="mt-1 font-mono text-xs text-slate-400">{{ item.number || '无原编号' }} · 旧系统</div>
+                                <Link :href="`/procurement/applications?legacy=${encodeURIComponent(item.source_id)}`" class="font-medium text-slate-900 hover:text-emerald-800 hover:underline">{{ item.title || '未命名项目' }}</Link>
+                                <div class="mt-1 font-mono text-xs text-slate-400">{{ item.number || '无原编号' }}</div>
                             </td>
+                            <td class="px-5 py-4 text-slate-600">{{ item.department_name || '—' }}</td>
                             <td class="px-5 py-4 tabular-nums">{{ currency(item.amount_cents) }}</td>
-                            <td class="px-5 py-4">{{ item.status || '—' }}</td>
-                            <td class="px-5 py-4">{{ item.occurred_at?.slice(0, 10) || '—' }}</td>
-                            <td class="px-5 py-4"><Link :href="`/procurement/legacy-history/${encodeURIComponent(item.source_id)}`" class="font-medium text-emerald-800 hover:underline">查看档案</Link></td>
+                            <td class="px-5 py-4">{{ (item.submitted_at || item.occurred_at)?.slice(0, 10) || '—' }}</td>
+                            <td class="px-5 py-4"><span :class="['rounded-full px-2.5 py-1 text-xs font-medium', item.status === '未提交' ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800']">{{ item.status || '—' }}</span></td>
+                            <td class="px-5 py-4"><Link :href="`/procurement/applications?legacy=${encodeURIComponent(item.source_id)}`" class="font-medium text-emerald-800 hover:underline">查看档案 →</Link></td>
                         </tr>
                     </tbody>
                 </table>
+                <p v-if="filteredLegacy.length === 0" class="px-5 py-12 text-center text-sm text-slate-500">当前条件下没有申请</p>
+                </div>
+                <div class="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-xs text-slate-500"><span>显示 {{ filteredLegacy.length === 0 ? 0 : (page - 1) * pageSize + 1 }}–{{ Math.min(page * pageSize, filteredLegacy.length) }} / {{ filteredLegacy.length }} 条</span><div class="flex gap-2"><button type="button" class="rounded border border-slate-200 px-3 py-1 disabled:opacity-40" :disabled="page === 1" @click="page--">上一页</button><span class="px-2 py-1">{{ page }} / {{ totalPages }}</span><button type="button" class="rounded border border-slate-200 px-3 py-1 disabled:opacity-40" :disabled="page >= totalPages" @click="page++">下一页</button></div></div>
             </div>
         </section>
     </main>

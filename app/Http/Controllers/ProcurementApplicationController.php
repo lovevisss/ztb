@@ -17,6 +17,28 @@ class ProcurementApplicationController extends Controller
     public function index(Request $request): Response
     {
         $account = $request->user()->school_account;
+        if ($request->filled('legacy')) {
+            $sourceId = $request->validate(['legacy' => ['required', 'string', 'max:64']])['legacy'];
+            $project = DB::table('legacy_procurement_records')
+                ->where('source_table', 'zcy_cgsq')
+                ->where('source_id', $sourceId)
+                ->where('creator_account', $account ?? '')
+                ->first();
+            abort_if($project === null, 404);
+
+            return Inertia::render('procurement/LegacyDetail', [
+                'project' => $project,
+                'records' => DB::table('legacy_procurement_records')
+                    ->where('application_source_id', $sourceId)
+                    ->where('source_table', '!=', 'zcy_cgsq')
+                    ->orderBy('occurred_at')
+                    ->get(['source_table', 'source_id', 'number', 'title', 'status', 'amount_cents', 'occurred_at', 'details']),
+                'attachments' => DB::table('legacy_procurement_attachments')
+                    ->where('application_source_id', $sourceId)
+                    ->get(['owner_table', 'owner_source_id', 'name', 'migration_status']),
+                'backHref' => '/procurement/applications',
+            ]);
+        }
 
         return Inertia::render('procurement/Index', [
             'applications' => ProcurementApplication::query()
@@ -26,7 +48,21 @@ class ProcurementApplicationController extends Controller
                 ->where('source_table', 'zcy_cgsq')
                 ->where('creator_account', $account)
                 ->orderByDesc('occurred_at')
-                ->get(['source_id', 'number', 'title', 'amount_cents', 'status', 'occurred_at']),
+                ->get(['source_id', 'number', 'title', 'amount_cents', 'status', 'occurred_at', 'details'])
+                ->map(function ($row) {
+                    $details = json_decode((string) $row->details, true);
+
+                    return [
+                        'source_id' => $row->source_id,
+                        'number' => $row->number,
+                        'title' => $row->title,
+                        'amount_cents' => $row->amount_cents,
+                        'status' => $row->status,
+                        'occurred_at' => $row->occurred_at,
+                        'department_name' => $details['sbbm'] ?? null,
+                        'submitted_at' => $details['sbrq'] ?? null,
+                    ];
+                }),
         ]);
     }
 

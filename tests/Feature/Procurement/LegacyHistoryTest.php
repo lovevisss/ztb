@@ -37,6 +37,11 @@ class LegacyHistoryTest extends TestCase
             ->has('applications', 1)->has('legacyApplications', 1)
             ->where('legacyApplications.0.source_id', 'old-mine'));
         $this->actingAs($user)->get(route('procurement.legacy-history.show', 'old-mine'))->assertSuccessful();
+        $this->actingAs($user)->get(route('procurement.applications.index', ['legacy' => 'old-mine']))
+            ->assertSuccessful()->assertInertia(fn ($page) => $page->component('procurement/LegacyDetail')
+            ->where('project.source_id', 'old-mine')
+            ->where('backHref', '/procurement/applications'));
+        $this->actingAs($user)->get(route('procurement.applications.index', ['legacy' => 'old-other']))->assertNotFound();
         $this->actingAs($user)->get(route('procurement.legacy-history.show', 'old-other'))->assertForbidden();
         $this->actingAs($other)->get(route('procurement.applications.index'))
             ->assertSuccessful()->assertInertia(fn ($page) => $page->has('applications', 0)
