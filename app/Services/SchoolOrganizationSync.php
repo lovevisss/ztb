@@ -52,6 +52,7 @@ class SchoolOrganizationSync
                 if ($user === null) {
                     $user = User::create([
                         'school_account' => $item['account'], 'name' => $item['name'],
+                        'mobile_phone' => $item['mobile_phone'] ?? null,
                         'email' => $item['email'] ?? hash('sha256', $item['account']).'@school.invalid',
                         'password' => Str::random(64),
                         'email_verified_at' => $now,
@@ -63,6 +64,7 @@ class SchoolOrganizationSync
                 } else {
                     $user->update([
                         'name' => $item['name'],
+                        ...(array_key_exists('mobile_phone', $item) ? ['mobile_phone' => $item['mobile_phone']] : []),
                         'email' => $item['email'] ?? $user->email,
                         'department_id' => $departments[$item['department_code']],
                         'school_position_id' => $positions[$item['position_code']],

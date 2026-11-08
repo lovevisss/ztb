@@ -49,7 +49,7 @@ class OrganizationSyncTest extends TestCase
         $existing = User::factory()->create(['school_account' => '001', 'department_id' => $oldDepartment]);
         $originalPassword = $existing->password;
         $people = [
-            ['account' => '001', 'name' => '张老师', 'email' => $existing->email, 'department_code' => 'IT', 'position_code' => 'HEAD', 'active' => true],
+            ['account' => '001', 'name' => '张老师', 'email' => $existing->email, 'mobile_phone' => '13800138000', 'department_code' => 'IT', 'position_code' => 'HEAD', 'active' => true],
             ['account' => '002', 'name' => '李老师', 'email' => 'li@example.edu.cn', 'department_code' => 'LOG', 'position_code' => 'STAFF', 'active' => true],
         ];
 
@@ -60,7 +60,7 @@ class OrganizationSyncTest extends TestCase
         $it = DB::table('departments')->where('external_code', 'IT')->first();
         $school = DB::table('departments')->where('external_code', 'SCHOOL')->first();
         $this->assertSame($school->id, $it->parent_id);
-        $this->assertDatabaseHas('users', ['id' => $existing->id, 'name' => '张老师', 'department_id' => $it->id, 'school_account' => '001']);
+        $this->assertDatabaseHas('users', ['id' => $existing->id, 'name' => '张老师', 'mobile_phone' => '13800138000', 'department_id' => $it->id, 'school_account' => '001']);
         $this->assertSame($originalPassword, $existing->fresh()->password);
 
         $this->actingAs($admin)->putJson(route('organization.position-roles.update', 'HEAD'), [

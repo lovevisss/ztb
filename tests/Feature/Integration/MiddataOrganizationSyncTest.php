@@ -30,6 +30,7 @@ class MiddataOrganizationSyncTest extends TestCase
             $table->string('rylx');
             $table->string('dwbm');
             $table->string('dzyx')->nullable();
+            $table->string('yddh')->nullable();
         });
     }
 
@@ -38,21 +39,22 @@ class MiddataOrganizationSyncTest extends TestCase
         $source = DB::connection('school_source');
         $source->table('t_cx_xyxx')->insert(['dwbm' => '100', 'dwmc' => '信息部']);
         $source->table('t_cx_zzqxryxx')->insert([
-            ['xgh' => '001', 'xm' => '张老师', 'rylx' => '1', 'dwbm' => '100', 'dzyx' => 'same@example.edu.cn'],
-            ['xgh' => '002', 'xm' => '李老师', 'rylx' => '2', 'dwbm' => '900', 'dzyx' => 'same@example.edu.cn'],
+            ['xgh' => '001', 'xm' => '张老师', 'rylx' => '1', 'dwbm' => '100', 'dzyx' => 'same@example.edu.cn', 'yddh' => '13800138000'],
+            ['xgh' => '002', 'xm' => '李老师', 'rylx' => '2', 'dwbm' => '900', 'dzyx' => 'same@example.edu.cn', 'yddh' => null],
         ]);
 
         $this->artisan('school:sync-organization')->assertExitCode(0);
         $this->assertDatabaseCount('users', 2);
+        $this->assertDatabaseHas('users', ['school_account' => '001', 'mobile_phone' => '13800138000']);
         $this->assertDatabaseHas('departments', ['external_code' => '900', 'name' => '未分配院系']);
         $this->assertDatabaseHas('users', ['school_account' => '002', 'email' => hash('sha256', '002').'@school.invalid']);
         $this->artisan('school:sync-organization')->assertExitCode(0);
         $this->assertDatabaseCount('users', 2);
 
-        $source->table('t_cx_zzqxryxx')->where('xgh', '001')->update(['xm' => '张老师新', 'dwbm' => '900']);
+        $source->table('t_cx_zzqxryxx')->where('xgh', '001')->update(['xm' => '张老师新', 'dwbm' => '900', 'yddh' => '13900139000']);
         $source->table('t_cx_zzqxryxx')->where('xgh', '002')->update(['rylx' => '3']);
         $this->artisan('school:sync-organization')->assertExitCode(0);
-        $this->assertDatabaseHas('users', ['school_account' => '001', 'name' => '张老师新', 'is_active' => true]);
+        $this->assertDatabaseHas('users', ['school_account' => '001', 'name' => '张老师新', 'mobile_phone' => '13900139000', 'is_active' => true]);
         $this->assertDatabaseHas('users', ['school_account' => '002', 'is_active' => false]);
         $this->assertDatabaseHas('organization_sync_runs', ['source' => 'middata', 'status' => 'success', 'people_count' => 1, 'deactivated_count' => 1]);
     }

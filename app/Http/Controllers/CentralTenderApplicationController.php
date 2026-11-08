@@ -94,6 +94,7 @@ class CentralTenderApplicationController extends Controller
             'departmentAssigned' => $request->user()->department_id !== null,
             'threshold' => ProcurementClassificationRule::effectiveFor($request->user()->department_id)->threshold_cents / 100,
             'applicantName' => $request->user()->name,
+            'applicantPhone' => $request->user()->mobile_phone,
             'departmentName' => DB::table('departments')->where('id', $request->user()->department_id)->value('name'),
             'departments' => DB::table('departments')->orderBy('name')->get(['id', 'name']),
             'items' => $application === null ? [] : DB::table('procurement_line_items')->where('application_id', $application->id)->orderBy('position')->get(),

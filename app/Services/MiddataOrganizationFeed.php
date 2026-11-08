@@ -13,7 +13,7 @@ class MiddataOrganizationFeed
         $source = DB::connection('school_source');
         $departments = $source->table('t_cx_xyxx')->get(['dwbm', 'dwmc', 'lsdwh']);
         $people = $source->table('t_cx_zzqxryxx')->whereIn('rylx', ['1', '2'])
-            ->get(['xgh', 'xm', 'rylx', 'dwbm', 'dzyx']);
+            ->get(['xgh', 'xm', 'rylx', 'dwbm', 'dzyx', 'yddh']);
 
         if ($departments->isEmpty() || $people->isEmpty()) {
             throw ValidationException::withMessages(['source' => '来源部门或人员数据为空，已取消同步。']);
@@ -57,6 +57,7 @@ class MiddataOrganizationFeed
             $personFeed[] = [
                 'account' => $account,
                 'name' => $name,
+                'mobile_phone' => trim((string) $person->yddh) ?: null,
                 'email' => filter_var($email, FILTER_VALIDATE_EMAIL) && $emailCounts[$email] === 1
                     ? $email : hash('sha256', $account).'@school.invalid',
                 'department_code' => $departmentCode,

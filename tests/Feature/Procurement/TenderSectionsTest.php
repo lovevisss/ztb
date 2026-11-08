@@ -71,6 +71,60 @@ class TenderSectionsTest extends TestCase
         $this->assertSame('CGSQ-'.now()->format('Ymd').'-0001', DB::transaction(fn () => app(TenderNumber::class)->next()));
     }
 
+    public function test_purchase_method_is_fixed_for_normal_purchase_and_selected_for_special_purchase(): void
+    {
+        $user = $this->user();
+        $base = [
+            'section' => 'basic', 'title' => '设备采购', 'category' => '货物类',
+            'is_non_expenditure' => false, 'has_usage_department' => false,
+        ];
+        $this->actingAs($user)->post(route('procurement.tenders.sections.create'), [
+            ...$base, 'is_special_purchase' => false, 'purchase_method' => '单一来源',
+            'special_purchase_reason' => '旧理由',
+        ])->assertRedirect();
+        $application = DB::table('procurement_applications')->first();
+        $this->assertSame('公开招标', $application->purchase_method);
+        $this->assertNull($application->special_purchase_reason);
+
+        $this->actingAs($user)->post(route('procurement.tenders.sections.update', $application->id), [
+            ...$base, 'is_special_purchase' => true, 'purchase_method' => '',
+        ])->assertSessionHasErrors('purchase_method');
+        $this->actingAs($user)->post(route('procurement.tenders.sections.update', $application->id), [
+            ...$base, 'is_special_purchase' => true, 'purchase_method' => '公开招标',
+        ])->assertSessionHasErrors('purchase_method');
+        $this->actingAs($user)->post(route('procurement.tenders.sections.update', $application->id), [
+            ...$base, 'is_special_purchase' => true, 'purchase_method' => '竞争性磋商',
+            'special_purchase_reason' => '适合项目需求',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('procurement_applications', [
+            'id' => $application->id, 'purchase_method' => '竞争性磋商',
+            'special_purchase_reason' => '适合项目需求',
+        ]);
+    }
+
+    public function test_new_form_prefills_synced_phone_but_draft_keeps_its_own_phone(): void
+    {
+        $user = $this->user();
+        $user->update(['mobile_phone' => '13800138000']);
+        $this->actingAs($user)->get(route('procurement.tenders.new-form'))
+            ->assertInertia(fn ($page) => $page->component('procurement/TenderForm')->where('applicantPhone', '13800138000')->where('application', null));
+
+        $this->actingAs($user)->post(route('procurement.tenders.sections.create'), [
+            'section' => 'basic', 'title' => '采购项目', 'category' => '货物类', 'contact_phone' => '13700137000',
+            'is_special_purchase' => false, 'is_non_expenditure' => false, 'has_usage_department' => false,
+            'procurement_requirements' => '采购设备',
+        ])->assertRedirect();
+        $id = DB::table('procurement_applications')->value('id');
+        $user->update(['mobile_phone' => '13900139000']);
+        $this->actingAs($user)->get(route('procurement.tenders.edit', $id))
+            ->assertInertia(fn ($page) => $page->component('procurement/TenderForm')
+                ->where('applicantPhone', '13900139000')->where('application.contact_phone', '13700137000'));
+
+        $user->update(['mobile_phone' => null]);
+        $this->actingAs($user)->get(route('procurement.tenders.new-form'))
+            ->assertInertia(fn ($page) => $page->where('applicantPhone', null));
+    }
+
     public function test_submit_checks_totals_and_prepends_usage_department_head(): void
     {
         $applicant = $this->user();

@@ -18,6 +18,8 @@ use Throwable;
 
 class TenderSectionsController extends Controller
 {
+    private const SPECIAL_METHODS = ['邀请招标', '竞争性谈判', '竞争性磋商', '单一来源', '询价', '谈判', '政采云等平台'];
+
     public function create(Request $request, TenderNumber $numbers): RedirectResponse
     {
         abort_if($request->user()->department_id === null, 422, '当前用户尚未关联部门');
@@ -71,6 +73,9 @@ class TenderSectionsController extends Controller
                 if (blank($application->{$field})) {
                     $errors[$field] = '请填写此项。';
                 }
+            }
+            if ($application->is_special_purchase && ! in_array($application->purchase_method, self::SPECIAL_METHODS, true)) {
+                $errors['purchase_method'] = '请选择特殊采购方式。';
             }
             if ($application->has_usage_department && $application->usage_department_id === null) {
                 $errors['usage_department_id'] = '请选择使用部门。';
@@ -166,18 +171,7 @@ class TenderSectionsController extends Controller
     private function sectionData(Request $request, string $section): array
     {
         return match ($section) {
-            'basic' => $request->validate([
-                'title' => ['nullable', 'string', 'max:255'],
-                'category' => ['nullable', Rule::in(['工程类', '货物类', '服务类'])],
-                'contact_phone' => ['nullable', 'string', 'max:30'],
-                'purchase_method' => ['nullable', 'string', 'max:255'],
-                'is_special_purchase' => ['required', 'boolean'],
-                'is_non_expenditure' => ['required', 'boolean'],
-                'has_usage_department' => ['required', 'boolean'],
-                'usage_department_id' => ['nullable', 'integer', 'exists:departments,id'],
-                'procurement_requirements' => ['nullable', 'string'],
-                'remarks' => ['nullable', 'string'],
-            ]),
+            'basic' => $this->basicData($request),
             'items' => $request->validate([
                 'items' => ['present', 'array', 'max:500'],
                 'items.*.name' => ['required', 'string', 'max:255'],
@@ -198,6 +192,33 @@ class TenderSectionsController extends Controller
                 'files.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:20480'],
             ]),
         };
+    }
+
+    private function basicData(Request $request): array
+    {
+        $data = $request->validate([
+            'title' => ['nullable', 'string', 'max:255'],
+            'category' => ['nullable', Rule::in(['工程类', '货物类', '服务类'])],
+            'contact_phone' => ['nullable', 'string', 'max:30'],
+            'purchase_method' => ['nullable', 'string', 'max:255'],
+            'is_special_purchase' => ['required', 'boolean'],
+            'special_purchase_reason' => ['nullable', 'string'],
+            'is_non_expenditure' => ['required', 'boolean'],
+            'has_usage_department' => ['required', 'boolean'],
+            'usage_department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'procurement_requirements' => ['nullable', 'string'],
+            'remarks' => ['nullable', 'string'],
+        ]);
+        if ($data['is_special_purchase']) {
+            if (! in_array($data['purchase_method'] ?? null, self::SPECIAL_METHODS, true)) {
+                throw ValidationException::withMessages(['purchase_method' => '请选择特殊采购方式。']);
+            }
+        } else {
+            $data['purchase_method'] = '公开招标';
+            $data['special_purchase_reason'] = null;
+        }
+
+        return $data;
     }
 
     private function saveSection(Request $request, ProcurementApplication $application, string $section, array $data, array &$paths): void

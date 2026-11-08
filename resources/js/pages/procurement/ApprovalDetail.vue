@@ -25,6 +25,7 @@ type Application = {
     category: string | null;
     contact_phone: string | null;
     is_special_purchase: boolean;
+    special_purchase_reason: string | null;
     is_non_expenditure: boolean;
     remarks: string | null;
 };
@@ -313,6 +314,7 @@ const statusLabel: Record<string, string> = {
                     <div v-if="application.category || lineItems.length" class="mt-6 border-t border-[var(--brand-border)] pt-5 text-sm">
                         <p>归属：{{ application.category }}　经办人电话：{{ application.contact_phone }}　使用部门：{{ usageDepartmentName ?? '无' }}</p>
                         <p class="mt-2">特殊采购：{{ application.is_special_purchase ? '是' : '否' }}　非支出项目：{{ application.is_non_expenditure ? '是' : '否' }}</p>
+                        <p v-if="application.special_purchase_reason" class="mt-2 whitespace-pre-wrap">特殊采购方式理由：{{ application.special_purchase_reason }}</p>
                         <p v-if="application.remarks" class="mt-2 whitespace-pre-wrap">备注：{{ application.remarks }}</p>
                         <h3 class="mt-5 font-semibold">采购清单</h3>
                         <div class="mt-2 overflow-x-auto"><table class="w-full min-w-[600px] text-left"><thead><tr class="border-b border-[var(--brand-border)]"><th>名称</th><th>技术参数</th><th>数量</th><th>单价（元）</th><th>总价（元）</th></tr></thead><tbody><tr v-for="item in lineItems" :key="item.id" class="border-b border-[var(--brand-border)]"><td>{{ item.name }}</td><td>{{ item.specification }}</td><td>{{ item.quantity }} {{ item.unit }}</td><td>{{ (item.unit_price_cents / 100).toFixed(2) }}</td><td>{{ (item.total_cents / 100).toFixed(2) }}</td></tr></tbody></table></div>

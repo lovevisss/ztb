@@ -17,7 +17,7 @@ class ProcurementApplication extends Model
         'source_application_id',
         'executor_id',
         'category', 'contact_phone', 'is_special_purchase', 'is_non_expenditure',
-        'has_usage_department', 'usage_department_id', 'remarks',
+        'has_usage_department', 'usage_department_id', 'special_purchase_reason', 'remarks',
     ];
 
     protected function casts(): array

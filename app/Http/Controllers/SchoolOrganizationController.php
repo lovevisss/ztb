@@ -47,6 +47,7 @@ class SchoolOrganizationController extends Controller
             'people.*.account' => ['required', 'string', 'max:128', 'distinct'],
             'people.*.name' => ['required', 'string', 'max:255'],
             'people.*.email' => ['nullable', 'email', 'max:255', 'distinct'],
+            'people.*.mobile_phone' => ['nullable', 'string', 'max:30'],
             'people.*.department_code' => ['required', 'string', 'max:64'],
             'people.*.position_code' => ['required', 'string', 'max:64'],
             'people.*.active' => ['required', 'boolean'],

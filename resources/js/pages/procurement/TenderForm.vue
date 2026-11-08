@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 
 type Item = { name: string; specification: string; quantity: number; unit_price: number; unit: string; remarks: string };
 type SavedItem = { name: string; specification: string | null; quantity: number; unit_price_cents: number; unit: string | null; remarks: string | null };
 type Indicator = { id: number; code: string | null; name: string; director: string | null; available_cents: number | null };
 type CatalogItem = { id: number; name: string; specification: string | null; unit: string | null; unit_price_cents: number; remarks: string | null };
-type Application = { id: number; project_number: string | null; title: string | null; category: string | null; contact_phone: string | null; purchase_method: string | null; is_special_purchase: boolean; is_non_expenditure: boolean; has_usage_department: boolean; usage_department_id: number | null; procurement_requirements: string | null; remarks: string | null; budget_basis_note: string | null; budget_cents: number | null };
+type Application = { id: number; project_number: string | null; title: string | null; category: string | null; contact_phone: string | null; purchase_method: string | null; is_special_purchase: boolean; special_purchase_reason: string | null; is_non_expenditure: boolean; has_usage_department: boolean; usage_department_id: number | null; procurement_requirements: string | null; remarks: string | null; budget_basis_note: string | null; budget_cents: number | null };
 type Attachment = { id: number; original_name: string; size: number };
 type Allocation = { budget_indicator_id: number; amount_cents: number };
 
@@ -16,6 +16,7 @@ const props = defineProps<{
     departmentAssigned: boolean;
     threshold: number;
     applicantName: string;
+    applicantPhone: string | null;
     departmentName: string | null;
     departments: { id: number; name: string }[];
     items: SavedItem[];
@@ -35,12 +36,17 @@ const tabs: { key: Tab; label: string }[] = [
 ];
 const basic = useForm({
     section: 'basic', title: props.application?.title ?? '', category: props.application?.category ?? '',
-    contact_phone: props.application?.contact_phone ?? '', purchase_method: props.application?.purchase_method ?? '公开招标',
+    contact_phone: props.application ? (props.application.contact_phone ?? '') : (props.applicantPhone ?? ''), purchase_method: props.application?.purchase_method ?? '公开招标',
     is_special_purchase: props.application?.is_special_purchase ?? false,
+    special_purchase_reason: props.application?.special_purchase_reason ?? '',
     is_non_expenditure: props.application?.is_non_expenditure ?? false,
     has_usage_department: props.application?.has_usage_department ?? false,
     usage_department_id: props.application?.usage_department_id ?? null as number | null,
     procurement_requirements: props.application?.procurement_requirements ?? '', remarks: props.application?.remarks ?? '',
+});
+watch(() => basic.is_special_purchase, (special) => {
+    basic.purchase_method = special ? '' : '公开招标';
+    if (!special) basic.special_purchase_reason = '';
 });
 const itemForm = useForm<{ section: string; items: Item[] }>({
     section: 'items', items: props.items.map((item) => ({
@@ -161,7 +167,8 @@ const importError = ref('');
                 <label><span class="label">项目预算（元）</span><input class="field bg-[var(--brand-page)]" :value="money(total)" disabled /></label>
                 <label><span class="label">*归属</span><select v-model="basic.category" class="field"><option value="">请选择</option><option>工程类</option><option>货物类</option><option>服务类</option></select><small class="error">{{ basic.errors.category }}</small></label>
                 <label><span class="label">是否特殊采购</span><select v-model="basic.is_special_purchase" class="field"><option :value="false">否</option><option :value="true">是</option></select></label>
-                <label><span class="label">拟采购方式</span><select v-model="basic.purchase_method" class="field"><option>公开招标</option><option>邀请招标</option><option>竞争性磋商</option><option>竞争性谈判</option><option>询价</option><option>单一来源</option></select></label>
+                <label><span class="label">拟采购方式</span><input v-if="!basic.is_special_purchase" class="field" value="公开招标" disabled /><select v-else v-model="basic.purchase_method" class="field"><option value="">请选择</option><option>邀请招标</option><option>竞争性谈判</option><option>竞争性磋商</option><option>单一来源</option><option>询价</option><option>谈判</option><option>政采云等平台</option></select><small class="error">{{ basic.errors.purchase_method }}</small></label>
+                <label v-if="basic.is_special_purchase" class="sm:col-span-2"><span class="label">申请特殊采购方式理由</span><textarea v-model="basic.special_purchase_reason" class="field min-h-24" /><small class="error">{{ basic.errors.special_purchase_reason }}</small></label>
                 <label><span class="label">*是否有使用部门</span><select v-model="basic.has_usage_department" class="field"><option :value="false">否</option><option :value="true">是</option></select></label>
                 <label v-if="basic.has_usage_department"><span class="label">*使用部门</span><select v-model="basic.usage_department_id" class="field"><option :value="null">请选择</option><option v-for="department in departments" :key="department.id" :value="department.id">{{ department.name }}</option></select><small class="error">{{ basic.errors.usage_department_id }}</small></label>
                 <label><span class="label">*是否为非支出项目</span><select v-model="basic.is_non_expenditure" class="field"><option :value="false">否</option><option :value="true">是</option></select></label>
