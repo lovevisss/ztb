@@ -54,7 +54,7 @@ function money(cents: number | null) {
             仅供查询和统计；旧项目不会进入新系统审批流程。
         </p>
         <form
-            class="mt-[var(--brand-space-32)] flex flex-wrap gap-[var(--brand-space-16)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+            class="mt-[var(--brand-space-32)] flex flex-wrap gap-[var(--brand-space-16)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
             @submit.prevent="submit"
         >
             <el-input
@@ -76,7 +76,7 @@ function money(cents: number | null) {
             class="mt-[var(--brand-space-24)] grid gap-[var(--brand-space-16)] sm:grid-cols-2"
         >
             <div
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
             >
                 <p class="text-sm text-[var(--brand-muted)]">申请数量</p>
                 <p class="mt-[var(--brand-space-8)] text-2xl font-semibold">
@@ -84,7 +84,7 @@ function money(cents: number | null) {
                 </p>
             </div>
             <div
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
             >
                 <p class="text-sm text-[var(--brand-muted)]">申请预算合计</p>
                 <p class="mt-[var(--brand-space-8)] text-2xl font-semibold">
@@ -98,7 +98,7 @@ function money(cents: number | null) {
             <span
                 v-for="period in byYear"
                 :key="period.year"
-                class="rounded-full bg-[var(--brand-page)] px-[var(--brand-space-16)] py-[var(--brand-space-8)]"
+                class="rounded-full bg-[var(--brand-soft)] px-[var(--brand-space-16)] py-[var(--brand-space-8)]"
                 >{{ period.year }}：{{ period.projects_count }} 项</span
             >
         </div>
@@ -106,10 +106,10 @@ function money(cents: number | null) {
             共 {{ projects.total }} 条申请
         </p>
         <div
-            class="mt-[var(--brand-space-16)] overflow-x-auto rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)]"
+            class="mt-[var(--brand-space-16)] overflow-x-auto rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)]"
         >
             <table class="w-full min-w-[760px] text-left text-sm">
-                <thead class="bg-[var(--brand-page)] text-[var(--brand-muted)]">
+                <thead class="bg-[var(--brand-soft)] text-[var(--brand-muted)]">
                     <tr>
                         <th
                             class="px-[var(--brand-space-16)] py-[var(--brand-space-16)]"

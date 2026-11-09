@@ -106,7 +106,7 @@ const kindLabels: Record<string, string> = {
             class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-32)] lg:grid-cols-2"
         >
             <section
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
                 <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     申请与执行
@@ -169,7 +169,7 @@ const kindLabels: Record<string, string> = {
                 >
             </section>
             <section
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
                 <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     归档附件
@@ -194,7 +194,7 @@ const kindLabels: Record<string, string> = {
                 </ul>
             </section>
             <section
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
                 <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     审批记录
@@ -225,7 +225,7 @@ const kindLabels: Record<string, string> = {
                 </ul>
             </section>
             <section
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
                 <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     执行与归档记录

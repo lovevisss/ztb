@@ -96,7 +96,7 @@ const statusLabel: Record<string, string> = {
         >
 
         <form
-            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-16)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm md:grid-cols-[2fr_1fr_1fr_1fr_auto]"
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-16)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm md:grid-cols-[2fr_1fr_1fr_1fr_auto]"
             @submit.prevent="search"
         >
             <el-input
@@ -147,17 +147,17 @@ const statusLabel: Record<string, string> = {
         </div>
         <div
             v-if="projects.data.length === 0"
-            class="mt-[var(--brand-space-16)] rounded-[var(--brand-radius-md)] border border-dashed border-[var(--brand-border)] bg-[var(--brand-page)] px-[var(--brand-space-24)] py-[var(--brand-space-32)] text-center text-[var(--brand-muted)]"
+            class="mt-[var(--brand-space-16)] rounded-[var(--brand-radius-md)] border border-dashed border-[var(--brand-border)] bg-[var(--brand-soft)] px-[var(--brand-space-24)] py-[var(--brand-space-32)] text-center text-[var(--brand-muted)]"
         >
             没有符合条件的项目
         </div>
         <div
             v-else
-            class="mt-[var(--brand-space-16)] overflow-x-auto rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] shadow-sm"
+            class="mt-[var(--brand-space-16)] overflow-x-auto rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] shadow-sm"
         >
             <table class="w-full min-w-[720px] text-left text-sm">
                 <thead
-                    class="bg-[var(--brand-page)] text-xs font-semibold text-[var(--brand-muted)]"
+                    class="bg-[var(--brand-soft)] text-xs font-semibold text-[var(--brand-muted)]"
                 >
                     <tr>
                         <th

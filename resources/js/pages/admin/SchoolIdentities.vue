@@ -73,11 +73,11 @@ function find() {
             class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-24)] lg:grid-cols-[minmax(0,1fr)_330px]"
         >
             <section
-                class="overflow-x-auto rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] shadow-sm"
+                class="overflow-x-auto rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] shadow-sm"
             >
                 <table class="w-full min-w-[560px] text-left text-sm">
                     <thead
-                        class="bg-[var(--brand-page)] text-xs text-[var(--brand-muted)]"
+                        class="bg-[var(--brand-soft)] text-xs text-[var(--brand-muted)]"
                     >
                         <tr>
                             <th

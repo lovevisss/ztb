@@ -75,17 +75,6 @@ export function initializeTheme(): void {
         return;
     }
 
-    // Authenticated administration uses one consistent light palette.
-    if (
-        /^\/(dashboard|procurement|admin|settings)(\/|$)/.test(
-            window.location.pathname,
-        )
-    ) {
-        localStorage.setItem('appearance', 'light');
-        updateTheme('light');
-        return;
-    }
-
     // Initialize theme from saved preference or default to system...
     const savedAppearance = getStoredAppearance();
     updateTheme(savedAppearance || 'system');

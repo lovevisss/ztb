@@ -95,7 +95,7 @@ function save(intent: 'draft' | 'submit') {
 
         <div
             v-if="needsTenderForm"
-            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-page)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]"
+            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]"
         >
             当前预算达到统一招标分界金额，请使用
             <Link
@@ -107,7 +107,7 @@ function save(intent: 'draft' | 'submit') {
 
         <div
             v-if="!departmentAssigned"
-            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-page)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]"
+            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]"
         >
             当前账号尚未关联部门，请联系管理员完成组织信息同步后再提交申请。
         </div>
@@ -118,7 +118,7 @@ function save(intent: 'draft' | 'submit') {
         >
             <div class="space-y-[var(--brand-space-32)]">
                 <section
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm md:p-[var(--brand-space-32)]"
+                    class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm md:p-[var(--brand-space-32)]"
                 >
                     <h2
                         class="font-sans text-xl font-semibold text-[var(--brand-title)]"
@@ -231,7 +231,7 @@ function save(intent: 'draft' | 'submit') {
                     <button
                         type="button"
                         :disabled="form.processing || !departmentAssigned"
-                        class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-body)] hover:bg-[var(--brand-page)] disabled:opacity-50"
+                        class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-body)] hover:bg-[var(--brand-soft)] disabled:opacity-50"
                         @click="save('draft')"
                     >
                         保存草稿</button
@@ -242,7 +242,7 @@ function save(intent: 'draft' | 'submit') {
                             !departmentAssigned ||
                             needsTenderForm
                         "
-                        class="rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-card)] hover:bg-[var(--brand-primary)] disabled:opacity-50"
+                        class="rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-on-primary)] hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
                     >
                         提交申请
                     </button>
@@ -285,8 +285,8 @@ function save(intent: 'draft' | 'submit') {
     display: block;
     width: 100%;
     border: 1px solid var(--brand-border);
-    border-radius: 0.375rem;
-    background: white;
+    border-radius: 10px;
+    background: var(--brand-card);
     padding: 0.7rem 0.85rem;
     font-size: 0.875rem;
     color: var(--brand-title);

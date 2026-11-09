@@ -79,7 +79,7 @@ function save() {
                 <article
                     v-for="template in templates"
                     :key="template.id"
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                    class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
                 >
                     <div
                         class="flex items-start justify-between gap-[var(--brand-space-16)]"

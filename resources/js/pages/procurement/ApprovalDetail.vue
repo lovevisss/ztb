@@ -242,7 +242,7 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
         >
             <div class="space-y-[var(--brand-space-32)]">
                 <section
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                    class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
                 >
                     <h2
                         class="font-sans text-xl font-semibold text-[var(--brand-title)]"
@@ -404,7 +404,7 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
                 </section>
 
                 <section
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                    class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
                 >
                     <h2
                         class="font-sans text-xl font-semibold text-[var(--brand-title)]"
@@ -526,7 +526,7 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
                         application.status === 'execution_completed' ||
                         application.status === 'archived'
                     "
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+                    class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
                 >
                     <h2 class="font-sans text-lg text-[var(--brand-title)]">
                         项目归档
@@ -634,7 +634,7 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
                             ['pending', 'queued'].includes(step.status),
                         )
                     "
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+                    class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
                 >
                     <h2 class="font-sans text-lg text-[var(--brand-title)]">
                         调整审批人
@@ -675,7 +675,7 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
                         application.applicant_id === currentUserId &&
                         application.application_form === 'self_purchase'
                     "
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-page)] p-[var(--brand-space-24)]"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-24)]"
                 >
                     <p class="text-sm text-[var(--brand-warning)]">
                         申请已退回，请修改后重新提交。
@@ -692,7 +692,7 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
                         application.applicant_id === currentUserId &&
                         application.application_form === 'central_tender'
                     "
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-page)] p-[var(--brand-space-24)]"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-24)]"
                 >
                     <p class="text-sm text-[var(--brand-warning)]">
                         申请已退回，请修改后重新提交。
@@ -705,7 +705,7 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
                 </section>
                 <section
                     v-if="events.length"
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+                    class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
                 >
                     <h2 class="font-sans text-lg text-[var(--brand-title)]">
                         操作历史

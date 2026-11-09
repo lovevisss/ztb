@@ -64,7 +64,7 @@ function departmentName(id: number | null) {
             class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-32)] lg:grid-cols-[minmax(0,1fr)_340px]"
         >
             <section
-                class="overflow-hidden rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] shadow-sm"
+                class="overflow-hidden rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] shadow-sm"
             >
                 <div
                     class="border-b border-[var(--brand-border)] px-[var(--brand-space-24)] py-[var(--brand-space-24)]"
@@ -83,7 +83,7 @@ function departmentName(id: number | null) {
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[540px] text-left text-sm">
                         <thead
-                            class="bg-[var(--brand-page)] text-xs font-semibold text-[var(--brand-muted)]"
+                            class="bg-[var(--brand-soft)] text-xs font-semibold text-[var(--brand-muted)]"
                         >
                             <tr>
                                 <th
@@ -116,7 +116,7 @@ function departmentName(id: number | null) {
                                     >
                                     <span
                                         v-else-if="rule.is_scheduled"
-                                        class="ml-[var(--brand-space-8)] rounded-full bg-[var(--brand-page)] px-[var(--brand-space-8)] py-[var(--brand-space-8)] text-xs text-[var(--brand-warning)]"
+                                        class="ml-[var(--brand-space-8)] rounded-full bg-[var(--brand-soft)] px-[var(--brand-space-8)] py-[var(--brand-space-8)] text-xs text-[var(--brand-warning)]"
                                         >待生效</span
                                     >
                                 </td>
@@ -227,7 +227,7 @@ function departmentName(id: number | null) {
                     <button
                         type="submit"
                         :disabled="form.processing"
-                        class="w-full rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-card)] hover:bg-[var(--brand-primary)] disabled:opacity-50"
+                        class="w-full rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-on-primary)] hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
                     >
                         保存规则
                     </button>
@@ -252,8 +252,8 @@ function departmentName(id: number | null) {
     display: block;
     width: 100%;
     border: 1px solid var(--brand-border);
-    border-radius: 0.375rem;
-    background: white;
+    border-radius: 10px;
+    background: var(--brand-card);
     padding: 0.7rem 0.85rem;
     font-size: 0.875rem;
     color: var(--brand-title);

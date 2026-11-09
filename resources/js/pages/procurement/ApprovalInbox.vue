@@ -39,7 +39,7 @@ defineProps<{ steps: Step[] }>();
         </header>
         <div
             v-if="steps.length === 0"
-            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-dashed border-[var(--brand-border)] bg-[var(--brand-page)] px-[var(--brand-space-24)] py-[var(--brand-space-32)] text-center text-[var(--brand-muted)]"
+            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-dashed border-[var(--brand-border)] bg-[var(--brand-soft)] px-[var(--brand-space-24)] py-[var(--brand-space-32)] text-center text-[var(--brand-muted)]"
         >
             当前没有待审批项目
         </div>
@@ -50,7 +50,7 @@ defineProps<{ steps: Step[] }>();
             <article
                 v-for="step in steps"
                 :key="step.id"
-                class="flex flex-wrap items-center justify-between gap-[var(--brand-space-16)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] px-[var(--brand-space-24)] py-[var(--brand-space-24)] shadow-sm"
+                class="flex flex-wrap items-center justify-between gap-[var(--brand-space-16)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] px-[var(--brand-space-24)] py-[var(--brand-space-24)] shadow-sm"
             >
                 <div>
                     <p class="font-mono text-xs text-[var(--brand-muted)]">

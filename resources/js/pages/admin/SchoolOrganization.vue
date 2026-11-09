@@ -173,7 +173,7 @@ function saveRoles(code: string) {
             class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-32)] lg:grid-cols-[minmax(0,1fr)_330px]"
         >
             <section
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
                 <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     导入组织快照
@@ -213,7 +213,7 @@ function saveRoles(code: string) {
             </section>
             <aside class="space-y-[var(--brand-space-24)]">
                 <section
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                    class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
                 >
                     <h2 class="font-sans text-xl text-[var(--brand-title)]">
                         同步记录
@@ -251,7 +251,7 @@ function saveRoles(code: string) {
                     </p>
                 </section>
                 <section
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-page)] p-[var(--brand-space-24)] text-sm leading-7 text-[var(--brand-warning)]"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-24)] text-sm leading-7 text-[var(--brand-warning)]"
                 >
                     正式学校接口的字段与鉴权方式确认后，可将接口数据转换为相同快照结构；首次完整同步前请核对人员唯一账号和离职规则。
                 </section>
@@ -259,7 +259,7 @@ function saveRoles(code: string) {
         </div>
 
         <section
-            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
         >
             <h2 class="font-sans text-xl text-[var(--brand-title)]">
                 岗位与业务角色
@@ -306,7 +306,7 @@ function saveRoles(code: string) {
             </p>
         </section>
         <section
-            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
         >
             <h2 class="font-sans text-xl text-[var(--brand-title)]">
                 已同步部门

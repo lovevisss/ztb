@@ -208,10 +208,10 @@ const importError = ref('');
 
 <template>
     <Head title="统一招标申请填报" />
-    <main class="mx-auto w-full max-w-6xl px-5 py-8 md:px-8">
+    <main class="mx-auto w-full max-w-7xl px-5 py-8 md:px-8">
         <Link href="/procurement/applications" class="text-sm text-[var(--brand-primary)] hover:underline">← 返回申请列表</Link>
         <header class="my-8 text-center">
-            <h1 class="text-2xl font-semibold text-[var(--brand-title)]">采购申请单</h1>
+            <h1 class="text-[28px] font-semibold text-[var(--brand-title)]">采购申请单</h1>
             <p class="mt-2 text-sm text-[var(--brand-muted)]">{{ application?.project_number ?? '首次保存后自动生成项目编号' }}</p>
         </header>
         <div v-if="!departmentAssigned" class="mb-5 rounded border border-[var(--brand-warning)] p-4 text-[var(--brand-warning)]">当前账号尚未关联部门，请联系管理员。</div>
@@ -221,12 +221,12 @@ const importError = ref('');
         <section v-show="tab === 'basic'" class="panel">
             <h2 class="section-title">基本信息 <span class="text-xs font-normal">（*号为必填内容）</span></h2>
             <div class="grid gap-5 sm:grid-cols-2">
-                <label><span class="label">项目编号</span><input class="field bg-[var(--brand-page)]" :value="application?.project_number ?? '保存后自动生成'" disabled /></label>
+                <label><span class="label">项目编号</span><input class="field bg-[var(--brand-soft)]" :value="application?.project_number ?? '保存后自动生成'" disabled /></label>
                 <label><span class="label">*申报项目</span><input v-model="basic.title" class="field" /><small class="error">{{ basic.errors.title }}</small></label>
-                <label><span class="label">经办人</span><input class="field bg-[var(--brand-page)]" :value="applicantName" disabled /></label>
+                <label><span class="label">经办人</span><input class="field bg-[var(--brand-soft)]" :value="applicantName" disabled /></label>
                 <label><span class="label">*经办人电话</span><input v-model="basic.contact_phone" class="field" /><small class="error">{{ basic.errors.contact_phone }}</small></label>
-                <label><span class="label">经办人所在部门</span><input class="field bg-[var(--brand-page)]" :value="departmentName ?? '未关联部门'" disabled /></label>
-                <label><span class="label">项目预算（元）</span><input class="field bg-[var(--brand-page)]" :value="money(total)" disabled /></label>
+                <label><span class="label">经办人所在部门</span><input class="field bg-[var(--brand-soft)]" :value="departmentName ?? '未关联部门'" disabled /></label>
+                <label><span class="label">项目预算（元）</span><input class="field bg-[var(--brand-soft)]" :value="money(total)" disabled /></label>
                 <label><span class="label">*归属</span><select v-model="basic.category" class="field"><option value="">请选择</option><option>工程类</option><option>货物类</option><option>服务类</option></select><small class="error">{{ basic.errors.category }}</small></label>
                 <label><span class="label">是否特殊采购</span><select v-model="basic.is_special_purchase" class="field"><option :value="false">否</option><option :value="true">是</option></select></label>
                 <label><span class="label">拟采购方式</span><input v-if="!basic.is_special_purchase" class="field" value="公开招标" disabled /><select v-else v-model="basic.purchase_method" class="field"><option value="">请选择</option><option>邀请招标</option><option>竞争性谈判</option><option>竞争性磋商</option><option>单一来源</option><option>询价</option><option>谈判</option><option>政采云等平台</option></select><small class="error">{{ basic.errors.purchase_method }}</small></label>
@@ -263,7 +263,7 @@ const importError = ref('');
             <p v-if="importError" class="error">{{ importError }}</p>
             <p v-if="itemForm.errors.items" class="error">{{ itemForm.errors.items }}</p>
             <div class="space-y-4">
-                <div v-for="(item, index) in itemForm.items" :key="index" class="rounded border border-[var(--brand-border)] p-4">
+                <div v-for="(item, index) in itemForm.items" :key="index" class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] p-4">
                     <div class="grid gap-3 md:grid-cols-3">
                         <label><span class="label">货物名称 *</span><input v-model="item.name" class="field" /></label>
                         <label class="md:col-span-2"><span class="label">技术参数、配置/主要配置</span><input v-model="item.specification" class="field" /></label>
@@ -291,12 +291,12 @@ const importError = ref('');
             <button v-if="canSyncBudgets" type="button" class="action mb-4" @click="router.post('/procurement/budgets/sync')">手动同步预算指标</button>
             <button type="button" class="action mb-4 ml-3" @click="budgetForm.allocations.push({ budget_indicator_id: 0, amount: 0, code: null, name: '', director: null }); openIndicatorPicker(budgetForm.allocations.length - 1)">＋ 添加经费来源</button>
             <p class="error">{{ budgetForm.errors.allocations }}</p>
-            <div v-for="(allocation, index) in budgetForm.allocations" :key="index" class="mb-4 grid items-end gap-3 rounded border border-[var(--brand-border)] p-4 md:grid-cols-[1fr_11rem_auto]">
+            <div v-for="(allocation, index) in budgetForm.allocations" :key="index" class="mb-4 grid items-end gap-3 rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] p-4 md:grid-cols-[1fr_11rem_auto]">
                 <div><span class="label">预算编码 / 预算项目名称 / 负责人</span><button type="button" class="field text-left" @click="openIndicatorPicker(index)">{{ allocation.budget_indicator_id ? `${allocation.code ?? '无代码'} · ${allocation.name} · ${allocation.director ?? '无负责人'}` : '搜索并选择经费来源' }}</button><small class="error">{{ budgetForm.errors[`allocations.${index}.budget_indicator_id` as keyof typeof budgetForm.errors] }}</small></div>
                 <label><span class="label">使用金额（元）</span><input v-model.number="allocation.amount" class="field" type="number" min="0.01" step="0.01" /></label>
                 <button type="button" class="text-[var(--brand-danger)]" @click="budgetForm.allocations.splice(index, 1)">删除</button>
             </div>
-            <div v-if="pickerIndex !== null" class="mb-5 rounded border border-[var(--brand-primary)] bg-[var(--brand-page)] p-4">
+            <div v-if="pickerIndex !== null" class="mb-5 rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] bg-[var(--brand-soft)] p-4">
                 <div class="mb-3 flex items-center justify-between"><h3 class="font-semibold">选择经费来源</h3><button type="button" class="text-sm text-[var(--brand-muted)]" @click="pickerIndex = null">关闭</button></div>
                 <form class="grid gap-2 md:grid-cols-[2fr_1fr_1fr_auto]" @submit.prevent="searchIndicators()">
                     <input v-model="pickerQuery" class="field" placeholder="搜索经费名称或预算代码" aria-label="搜索经费名称或预算代码" />
@@ -307,7 +307,7 @@ const importError = ref('');
                 <p v-if="pickerError" class="error mt-2">{{ pickerError }}</p>
                 <p class="my-3 text-xs text-[var(--brand-muted)]">共 {{ pickerTotal }} 条。未启用的经费来源仅供查看。</p>
                 <div class="max-h-72 space-y-2 overflow-y-auto">
-                    <button v-for="indicator in pickerRows" :key="indicator.id" type="button" class="w-full rounded border border-[var(--brand-border)] bg-[var(--brand-card)] p-3 text-left text-sm disabled:opacity-50" :disabled="indicator.status !== '1' || budgetForm.allocations.some((allocation, index) => index !== pickerIndex && allocation.budget_indicator_id === indicator.id)" @click="selectIndicator(indicator)">
+                    <button v-for="indicator in pickerRows" :key="indicator.id" type="button" class="w-full rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-3 text-left text-sm disabled:opacity-50" :disabled="indicator.status !== '1' || budgetForm.allocations.some((allocation, index) => index !== pickerIndex && allocation.budget_indicator_id === indicator.id)" @click="selectIndicator(indicator)">
                         <span class="font-medium">{{ indicator.code ?? '无代码' }} · {{ indicator.name }}</span>
                         <span class="ml-2 text-[var(--brand-muted)]">{{ indicator.director ?? '无负责人' }} · {{ indicator.department_name ?? indicator.department_code ?? '无部门' }} · {{ indicator.status === '1' ? '启用' : indicator.status === null ? '未标记' : `状态 ${indicator.status}` }}</span>
                     </button>
@@ -332,14 +332,16 @@ const importError = ref('');
 </template>
 
 <style scoped>
-.panel { border: 1px solid var(--brand-border); background: var(--brand-card); padding: 1.5rem; border-radius: var(--brand-radius-md); }
-.section-title { border-bottom: 1px solid var(--brand-primary); padding-bottom: .7rem; margin-bottom: 1.25rem; color: var(--brand-title); font-weight: 700; }
+.panel { border: 1px solid var(--brand-border); background: var(--brand-card); padding: 1.5rem; border-radius: var(--brand-radius-lg); box-shadow: var(--brand-shadow); }
+.section-title { border-bottom: 1px solid var(--brand-border); padding-bottom: 1rem; margin-bottom: 1.5rem; color: var(--brand-title); font-size: 1.25rem; font-weight: 600; line-height: 1.35; }
 .label { display: block; font-size: .8rem; color: var(--brand-body); margin-bottom: .4rem; }
-.field { width: 100%; min-height: 2.5rem; border: 1px solid var(--brand-border); border-radius: .25rem; padding: .5rem .65rem; background-color: var(--brand-card); }
+.field { width: 100%; min-height: 2.5rem; border: 1px solid var(--brand-border); border-radius: 10px; padding: .5rem .75rem; background-color: var(--brand-card); color: var(--brand-body); }
 .field:focus { outline: 2px solid var(--brand-primary); outline-offset: 1px; }
-.field:disabled { background: var(--brand-page); }
+.field:disabled { background: var(--brand-soft); color: var(--brand-muted); }
 .error { color: var(--brand-danger); font-size: .75rem; }
-.save { display: block; margin: 1.5rem auto 0; background: var(--brand-primary); color: white; border-radius: .25rem; padding: .65rem 1.75rem; font-size: .875rem; }
+.save { display: block; margin: 1.5rem auto 0; min-height: 2.5rem; background: var(--brand-primary); color: var(--brand-on-primary); border-radius: var(--brand-radius-md); padding: .65rem 1.75rem; font-size: .875rem; }
+.save:hover:not(:disabled) { background: var(--brand-primary-hover); }
 .save:disabled { opacity: .5; }
-.action { display: inline-block; border: 1px solid var(--brand-primary); border-radius: .25rem; padding: .45rem .8rem; color: var(--brand-primary); font-size: .875rem; }
+.action { display: inline-flex; align-items: center; justify-content: center; min-height: 2.5rem; border: 1px solid var(--brand-border); border-radius: var(--brand-radius-md); padding: .45rem .85rem; color: var(--brand-primary); background: var(--brand-card); font-size: .875rem; }
+.action:hover { background: var(--brand-primary-light); }
 </style>

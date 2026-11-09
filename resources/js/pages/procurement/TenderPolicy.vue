@@ -88,7 +88,7 @@ const articles: Article[] = [
                 </div>
             </section>
             <footer class="mt-12 flex justify-center border-t border-[var(--brand-border)] pt-8">
-                <Link href="/procurement/tenders/create/form" class="inline-flex min-h-12 items-center justify-center rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-10 text-base font-semibold text-[var(--brand-card)] transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">填报申请</Link>
+                <Link href="/procurement/tenders/create/form" class="inline-flex min-h-12 items-center justify-center rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-10 text-base font-semibold text-[var(--brand-on-primary)] transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">填报申请</Link>
             </footer>
         </article>
     </main>

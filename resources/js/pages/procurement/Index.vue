@@ -66,7 +66,7 @@ function actionLabel(item: Record) {
 
 <template>
     <Head title="我的采购申请" />
-    <main class="mx-auto w-full max-w-7xl px-[var(--brand-space-24)] py-[var(--brand-space-32)]">
+    <main class="my-applications-page mx-auto w-full px-[var(--brand-space-24)] py-[var(--brand-space-32)]">
         <header class="mb-8 flex flex-wrap items-end justify-between gap-6 border-b border-[var(--brand-border)] pb-6">
             <div>
                 <p class="mb-2 text-xs font-semibold tracking-[0.28em] text-[var(--brand-primary)]">PROCUREMENT / 采购管理</p>
@@ -75,32 +75,38 @@ function actionLabel(item: Record) {
             </div>
             <div class="flex flex-wrap gap-4">
                 <Link href="/procurement/applications/create" class="rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] px-5 py-3 text-sm text-[var(--brand-primary)]">部门自行采购</Link>
-                <Link href="/procurement/tenders/create" class="rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-5 py-3 text-sm text-white">统一招标 ↗</Link>
+                <Link href="/procurement/tenders/create" class="rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-5 py-3 text-sm text-[var(--brand-on-primary)]">统一招标 ↗</Link>
             </div>
         </header>
-        <section class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] shadow-sm">
+        <section class="min-w-0 rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] shadow-[var(--brand-shadow)]">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--brand-border)] px-6 pt-4">
                 <div class="flex gap-6 text-sm font-medium">
-                    <button v-for="item in ([{ key: 'draft', name: '未提交' }, { key: 'submitted', name: '已提交' }] as const)" :key="item.key" type="button" class="border-b-2 px-2 pb-4" :class="tab === item.key ? 'border-[var(--brand-primary)] text-[var(--brand-primary)]' : 'border-transparent text-[var(--brand-muted)]'" @click="navigate(item.key)">{{ item.name }} <span class="ml-1 rounded-full bg-[var(--brand-page)] px-2 py-1 text-xs">{{ counts[item.key] }}</span></button>
+                    <button v-for="item in ([{ key: 'draft', name: '未提交' }, { key: 'submitted', name: '已提交' }] as const)" :key="item.key" type="button" class="border-b-2 px-2 pb-4" :class="tab === item.key ? 'border-[var(--brand-primary)] text-[var(--brand-primary)]' : 'border-transparent text-[var(--brand-muted)]'" @click="navigate(item.key)">{{ item.name }} <span class="ml-1 rounded-full bg-[var(--brand-soft)] px-2 py-1 text-xs">{{ counts[item.key] }}</span></button>
                 </div>
                 <a :href="exportHref" class="mb-3 rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] px-4 py-2 text-sm text-[var(--brand-primary)] hover:bg-[var(--brand-primary-light)]">导出当前筛选结果 Excel</a>
             </div>
             <form class="grid gap-3 border-b border-[var(--brand-border)] px-6 py-5 sm:grid-cols-2 lg:grid-cols-5" @submit.prevent="navigate()">
                 <label v-for="field in fieldLabels" :key="field.key" class="text-xs font-medium text-[var(--brand-muted)]">{{ field.label }}
-                    <input v-model="fields[field.key]" type="search" :placeholder="`搜索${field.label}`" class="mt-2 w-full rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-white px-3 py-2 text-sm text-[var(--brand-body)] outline-none focus:border-[var(--brand-primary)]" />
+                    <input v-model="fields[field.key]" type="search" :placeholder="`搜索${field.label}`" class="mt-2 w-full rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] px-3 py-2 text-sm text-[var(--brand-body)] outline-none focus:border-[var(--brand-primary)]" />
                 </label>
                 <div class="flex gap-2 sm:col-span-2 lg:col-span-5">
-                    <button type="submit" class="rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-5 py-2 text-sm text-white">查询</button>
+                    <button type="submit" class="rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-5 py-2 text-sm text-[var(--brand-on-primary)]">查询</button>
                     <button type="button" class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] px-5 py-2 text-sm text-[var(--brand-body)]" @click="navigate(tab, 1, true)">重置</button>
                 </div>
             </form>
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[1100px] text-left text-sm">
-                    <thead class="bg-[var(--brand-page)] text-xs text-[var(--brand-muted)]"><tr>
+            <div class="overflow-x-auto" role="region" aria-label="采购申请列表" tabindex="0">
+                <table class="applications-table w-full text-left text-sm">
+                    <colgroup>
+                        <col style="width: 175px" /><col style="width: 280px" /><col style="width: 235px" />
+                        <col style="width: 140px" /><col style="width: 120px" /><col style="width: 90px" />
+                        <col style="width: 130px" /><col style="width: 105px" /><col style="width: 85px" />
+                        <col style="width: 100px" />
+                    </colgroup>
+                    <thead class="bg-[var(--brand-soft)] text-xs text-[var(--brand-muted)]"><tr>
                         <th v-for="heading in ['项目编号', '项目名称', '申报部门', '申请金额', '提交日期', '申请人', '申请人电话', '流程状态', '来源', '操作']" :key="heading" class="px-4 py-3">{{ heading }}</th>
                     </tr></thead>
                     <tbody class="divide-y divide-[var(--brand-border)]">
-                        <tr v-for="item in records" :key="item.key" class="text-[var(--brand-body)] hover:bg-[var(--brand-page)]">
+                        <tr v-for="item in records" :key="item.key" class="text-[var(--brand-body)] hover:bg-[var(--brand-primary-light)]">
                             <td class="px-4 py-4 font-mono text-xs">{{ item.number || '—' }}</td>
                             <td class="px-4 py-4 font-medium"><Link :href="detailHref(item)" class="text-[var(--brand-primary)] hover:underline">{{ item.title || '未命名项目' }}</Link></td>
                             <td class="px-4 py-4">{{ item.department_name || '—' }}</td>
@@ -123,3 +129,25 @@ function actionLabel(item: Record) {
         </section>
     </main>
 </template>
+
+<style scoped>
+.my-applications-page {
+    max-width: none;
+}
+
+.applications-table {
+    min-width: 1460px;
+    table-layout: fixed;
+}
+
+.applications-table th,
+.applications-table td {
+    white-space: nowrap;
+}
+
+.applications-table td:nth-child(2),
+.applications-table td:nth-child(3) {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+</style>

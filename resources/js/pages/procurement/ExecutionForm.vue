@@ -116,7 +116,7 @@ function save(intent: 'draft' | 'complete') {
                 @submit.prevent="save('draft')"
             >
                 <section
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                    class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
                 >
                     <h2 class="font-sans text-xl text-[var(--brand-title)]">
                         执行结果
@@ -189,7 +189,7 @@ function save(intent: 'draft' | 'complete') {
                 </section>
 
                 <section
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                    class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
                 >
                     <h2 class="font-sans text-xl text-[var(--brand-title)]">
                         执行材料

@@ -137,7 +137,7 @@ const flowNodes = computed(() => {
                     </p>
                 </div>
                 <span
-                    class="rounded-full border border-[var(--brand-warning)] bg-[var(--brand-page)] px-[var(--brand-space-16)] py-[var(--brand-space-8)] text-xs text-[var(--brand-warning)]"
+                    class="rounded-full border border-[var(--brand-warning)] bg-[var(--brand-soft)] px-[var(--brand-space-16)] py-[var(--brand-space-8)] text-xs text-[var(--brand-warning)]"
                     >历史记录 · 只读</span
                 >
             </div>
@@ -151,7 +151,7 @@ const flowNodes = computed(() => {
             class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-16)] sm:grid-cols-2 lg:grid-cols-4"
         >
             <div
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
             >
                 <p class="text-xs text-[var(--brand-muted)]">申请金额</p>
                 <p
@@ -161,7 +161,7 @@ const flowNodes = computed(() => {
                 </p>
             </div>
             <div
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
             >
                 <p class="text-xs text-[var(--brand-muted)]">原流程状态</p>
                 <p
@@ -171,7 +171,7 @@ const flowNodes = computed(() => {
                 </p>
             </div>
             <div
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
             >
                 <p class="text-xs text-[var(--brand-muted)]">申报部门</p>
                 <p
@@ -181,7 +181,7 @@ const flowNodes = computed(() => {
                 </p>
             </div>
             <div
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
             >
                 <p class="text-xs text-[var(--brand-muted)]">申报日期</p>
                 <p
@@ -193,7 +193,7 @@ const flowNodes = computed(() => {
         </div>
 
         <section
-            class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+            class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
         >
             <h2
                 class="font-sans text-xl font-semibold text-[var(--brand-title)]"
@@ -250,11 +250,11 @@ const flowNodes = computed(() => {
             </details>
         </section>
 
-        <section class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]">
+        <section class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]">
             <h2 class="text-xl font-semibold text-[var(--brand-title)]">采购清单 <span class="text-sm font-normal text-[var(--brand-muted)]">{{ lineItems.length }} 项</span></h2>
             <div class="mt-4 overflow-x-auto">
                 <table class="w-full min-w-[760px] text-left text-sm">
-                    <thead class="border-b border-[var(--brand-border)] bg-[var(--brand-page)] text-[var(--brand-muted)]"><tr><th class="p-3">编号</th><th class="p-3">名称</th><th class="p-3">规格参数</th><th class="p-3">数量</th><th class="p-3">单位</th><th class="p-3">单价（元）</th><th class="p-3">金额</th><th class="p-3">备注</th></tr></thead>
+                    <thead class="border-b border-[var(--brand-border)] bg-[var(--brand-soft)] text-[var(--brand-muted)]"><tr><th class="p-3">编号</th><th class="p-3">名称</th><th class="p-3">规格参数</th><th class="p-3">数量</th><th class="p-3">单位</th><th class="p-3">单价（元）</th><th class="p-3">金额</th><th class="p-3">备注</th></tr></thead>
                     <tbody class="divide-y divide-[var(--brand-border)]"><tr v-for="row in lineItems" :key="row.source_id"><td class="p-3">{{ row.number || '—' }}</td><td class="p-3">{{ row.title || itemField(row, ['mc']) }}</td><td class="p-3">{{ itemField(row, ['ggxh', 'xhgg', 'jscc']) }}</td><td class="p-3">{{ itemField(row, ['sl', 'cgsl']) }}</td><td class="p-3">{{ itemField(row, ['dw']) }}</td><td class="p-3">{{ itemField(row, ['dj']) }}</td><td class="p-3">{{ money(row.amount_cents) }}</td><td class="p-3">{{ itemField(row, ['bz']) }}</td></tr></tbody>
                 </table>
                 <p v-if="!lineItems.length" class="py-6 text-center text-sm text-[var(--brand-muted)]">原系统无采购清单记录</p>
@@ -264,7 +264,7 @@ const flowNodes = computed(() => {
         <section
             v-for="group in sections"
             :key="group.table"
-            class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+            class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
         >
             <h2
                 class="font-sans text-xl font-semibold text-[var(--brand-title)]"
@@ -281,7 +281,7 @@ const flowNodes = computed(() => {
                 <details
                     v-for="row in group.rows"
                     :key="row.source_id"
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-page)]/50 px-[var(--brand-space-16)] py-[var(--brand-space-16)] text-sm"
+                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-soft)]/50 px-[var(--brand-space-16)] py-[var(--brand-space-16)] text-sm"
                 >
                     <summary
                         class="flex cursor-pointer flex-wrap items-center justify-between gap-[var(--brand-space-8)]"
@@ -320,7 +320,7 @@ const flowNodes = computed(() => {
 
         <section
             v-if="timeline.length"
-            class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+            class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
         >
             <h2
                 class="font-sans text-xl font-semibold text-[var(--brand-title)]"
@@ -349,7 +349,7 @@ const flowNodes = computed(() => {
         </section>
 
         <section
-            class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+            class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
         >
             <h2
                 class="font-sans text-xl font-semibold text-[var(--brand-title)]"

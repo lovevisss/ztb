@@ -171,14 +171,14 @@ const rankingMax = computed(() =>
                     >项目检索</Link
                 ><a
                     :href="exportUrl"
-                    class="rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-16)] py-[var(--brand-space-8)] text-sm font-medium text-[var(--brand-card)]"
+                    class="rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-16)] py-[var(--brand-space-8)] text-sm font-medium text-[var(--brand-on-primary)]"
                     >导出 Excel</a
                 >
             </div>
         </header>
 
         <form
-            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-16)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm sm:grid-cols-2 xl:grid-cols-4"
+            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-16)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm sm:grid-cols-2 xl:grid-cols-4"
             @submit.prevent="search"
         >
             <el-input
@@ -302,7 +302,7 @@ const rankingMax = computed(() =>
                     },
                 ]"
                 :key="card.label"
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
                 <p class="text-xs tracking-wide text-[var(--brand-muted)]">
                     {{ card.label }}
@@ -318,7 +318,7 @@ const rankingMax = computed(() =>
             </div>
         </div>
         <div
-            class="mt-[var(--brand-space-16)] flex flex-wrap gap-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-card)]"
+            class="mt-[var(--brand-space-16)] flex flex-wrap gap-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm text-[var(--brand-on-primary)]"
         >
             <span
                 >自行采购
@@ -338,7 +338,7 @@ const rankingMax = computed(() =>
             class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-24)] lg:grid-cols-2"
         >
             <section
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
                 <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     {{ props.filters.year ? '月度趋势' : '年度趋势' }}
@@ -398,7 +398,7 @@ const rankingMax = computed(() =>
                 </p>
             </section>
             <section
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
                 <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     采购类型分布
@@ -427,7 +427,7 @@ const rankingMax = computed(() =>
                 </div>
             </section>
             <section
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
                 <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     部门采购排行
@@ -441,7 +441,7 @@ const rankingMax = computed(() =>
                             ><strong>{{ item.count }} 项</strong>
                         </div>
                         <div
-                            class="mt-[var(--brand-space-8)] h-2 rounded-full bg-[var(--brand-page)]"
+                            class="mt-[var(--brand-space-8)] h-2 rounded-full bg-[var(--brand-soft)]"
                         >
                             <div
                                 class="h-2 rounded-full bg-[var(--brand-primary)]"
@@ -454,7 +454,7 @@ const rankingMax = computed(() =>
                 </ol>
             </section>
             <section
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
             >
                 <h2 class="font-sans text-xl text-[var(--brand-title)]">
                     采购方式分布
@@ -475,7 +475,7 @@ const rankingMax = computed(() =>
         </div>
 
         <section
-            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
+            class="mt-[var(--brand-space-32)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
         >
             <h2 class="font-sans text-xl text-[var(--brand-title)]">
                 统计明细
@@ -546,7 +546,7 @@ const rankingMax = computed(() =>
                     { title: '归档状态', data: byArchiveStatus },
                 ]"
                 :key="block.title"
-                class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
             >
                 <h3 class="font-sans text-lg text-[var(--brand-title)]">
                     {{ block.title }}
