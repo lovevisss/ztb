@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import WorkflowDiagram from './WorkflowDiagram.vue';
 
 type RecordRow = {
     source_table: string;
@@ -67,6 +68,7 @@ function money(cents: number | null) {
 const projectData = computed(() => parseDetails(props.project.details));
 const sections = computed(() =>
     visibleTables
+        .filter((table) => table !== 'zcy_cgsq_qd')
         .map((table) => ({
             table,
             rows: props.records.filter((row) => row.source_table === table),
@@ -76,6 +78,29 @@ const sections = computed(() =>
 const timeline = computed(() =>
     props.records.filter((row) => row.source_table === 'zcy_progress_history'),
 );
+const lineItems = computed(() => props.records.filter((row) => row.source_table === 'zcy_cgsq_qd'));
+function itemField(row: RecordRow, keys: string[]) {
+    const data = parseDetails(row.details);
+    for (const key of keys) {
+        if (data[key] !== null && data[key] !== undefined && data[key] !== '') return String(data[key]);
+    }
+    return '—';
+}
+const flowNodes = computed(() => {
+    const nodes: { key: string; label: string; state: 'done' | 'waiting'; time: string | null; person?: string | null; note?: string | null }[] = [];
+    const submitted = projectData.value.sbrq;
+    if (submitted) nodes.push({ key: 'submit', label: '提交', state: 'done', time: String(submitted), person: props.project.creator_name });
+    for (const row of timeline.value) {
+        const data = parseDetails(row.details);
+        nodes.push({
+            key: row.source_id, label: field(data, 'lcsm') === '—' ? row.title || '办理节点' : field(data, 'lcsm'),
+            state: 'done', time: row.occurred_at, person: data.zxr ? String(data.zxr) : null,
+            note: row.status,
+        });
+    }
+    if (!nodes.length) nodes.push({ key: 'none', label: '暂无办理记录', state: 'waiting', time: null });
+    return nodes;
+});
 </script>
 
 <template>
@@ -117,6 +142,10 @@ const timeline = computed(() =>
                 >
             </div>
         </header>
+
+        <div class="mt-[var(--brand-space-24)]">
+            <WorkflowDiagram title="原系统办理流程" :nodes="flowNodes" />
+        </div>
 
         <div
             class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-16)] sm:grid-cols-2 lg:grid-cols-4"
@@ -219,6 +248,17 @@ const timeline = computed(() =>
                     </div>
                 </dl>
             </details>
+        </section>
+
+        <section class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]">
+            <h2 class="text-xl font-semibold text-[var(--brand-title)]">采购清单 <span class="text-sm font-normal text-[var(--brand-muted)]">{{ lineItems.length }} 项</span></h2>
+            <div class="mt-4 overflow-x-auto">
+                <table class="w-full min-w-[760px] text-left text-sm">
+                    <thead class="border-b border-[var(--brand-border)] bg-[var(--brand-page)] text-[var(--brand-muted)]"><tr><th class="p-3">编号</th><th class="p-3">名称</th><th class="p-3">规格参数</th><th class="p-3">数量</th><th class="p-3">单位</th><th class="p-3">单价（元）</th><th class="p-3">金额</th><th class="p-3">备注</th></tr></thead>
+                    <tbody class="divide-y divide-[var(--brand-border)]"><tr v-for="row in lineItems" :key="row.source_id"><td class="p-3">{{ row.number || '—' }}</td><td class="p-3">{{ row.title || itemField(row, ['mc']) }}</td><td class="p-3">{{ itemField(row, ['ggxh', 'xhgg', 'jscc']) }}</td><td class="p-3">{{ itemField(row, ['sl', 'cgsl']) }}</td><td class="p-3">{{ itemField(row, ['dw']) }}</td><td class="p-3">{{ itemField(row, ['dj']) }}</td><td class="p-3">{{ money(row.amount_cents) }}</td><td class="p-3">{{ itemField(row, ['bz']) }}</td></tr></tbody>
+                </table>
+                <p v-if="!lineItems.length" class="py-6 text-center text-sm text-[var(--brand-muted)]">原系统无采购清单记录</p>
+            </div>
         </section>
 
         <section
@@ -337,7 +377,7 @@ const timeline = computed(() =>
                     <span>{{ file.name || '未命名附件' }}</span
                     ><span class="text-[var(--brand-muted)]">{{
                         labels[file.owner_table] || file.owner_table
-                    }}</span>
+                    }} · 文件待迁移</span>
                 </li>
             </ul>
         </section>

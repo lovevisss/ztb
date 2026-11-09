@@ -5,16 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\ProcurementApplication;
 use App\Models\ProcurementClassificationRule;
 use App\Services\ApprovalWorkflow;
+use App\Services\MyProcurementApplications;
+use App\Services\ProcurementSpreadsheet;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProcurementApplicationController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, MyProcurementApplications $listing): Response
     {
         $account = $request->user()->school_account;
         if ($request->filled('legacy')) {
@@ -40,29 +43,55 @@ class ProcurementApplicationController extends Controller
             ]);
         }
 
-        return Inertia::render('procurement/Index', [
-            'applications' => ProcurementApplication::query()
-                ->where('applicant_id', $request->user()->id)
-                ->latest()->get(),
-            'legacyApplications' => $account === null ? [] : DB::table('legacy_procurement_records')
-                ->where('source_table', 'zcy_cgsq')
-                ->where('creator_account', $account)
-                ->orderByDesc('occurred_at')
-                ->get(['source_id', 'number', 'title', 'amount_cents', 'status', 'occurred_at', 'details'])
-                ->map(function ($row) {
-                    $details = json_decode((string) $row->details, true);
+        $filters = $this->listFilters($request);
+        $records = $listing->records($request->user());
+        $filtered = $listing->filter($records, $filters);
+        $page = min((int) ($filters['page'] ?? 1), max(1, (int) ceil($filtered->count() / 15)));
 
-                    return [
-                        'source_id' => $row->source_id,
-                        'number' => $row->number,
-                        'title' => $row->title,
-                        'amount_cents' => $row->amount_cents,
-                        'status' => $row->status,
-                        'occurred_at' => $row->occurred_at,
-                        'department_name' => $details['sbbm'] ?? null,
-                        'submitted_at' => $details['sbrq'] ?? null,
-                    ];
-                }),
+        return Inertia::render('procurement/Index', [
+            'records' => $filtered->slice(($page - 1) * 15, 15)->values(),
+            'total' => $filtered->count(),
+            'page' => $page,
+            'lastPage' => max(1, (int) ceil($filtered->count() / 15)),
+            'counts' => [
+                'draft' => $records->where('tab', 'draft')->count(),
+                'submitted' => $records->where('tab', 'submitted')->count(),
+            ],
+            'filters' => $filters,
+        ]);
+    }
+
+    public function export(Request $request, MyProcurementApplications $listing, ProcurementSpreadsheet $spreadsheet): BinaryFileResponse
+    {
+        $filters = $this->listFilters($request);
+        $records = $listing->filter($listing->records($request->user()), $filters);
+        $path = $spreadsheet->writeTable(
+            ['项目编号', '项目名称', '申报部门', '申请金额（元）', '提交日期', '申请人', '申请人电话', '流程状态', '来源'],
+            $records->map(fn (array $item) => [
+                $item['number'], $item['title'], $item['department_name'],
+                $item['amount_cents'] === null ? null : $item['amount_cents'] / 100,
+                $item['submitted_at'] === null ? null : substr((string) $item['submitted_at'], 0, 10),
+                $item['applicant_name'], $item['contact_phone'], $item['status'], $item['source'],
+            ]),
+            '我的采购申请',
+        );
+
+        return response()->download($path, '我的采购申请-'.now()->format('Ymd-His').'.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /** @return array<string, mixed> */
+    private function listFilters(Request $request): array
+    {
+        return $request->validate([
+            'tab' => ['nullable', 'in:draft,submitted'],
+            'number' => ['nullable', 'string', 'max:100'],
+            'title' => ['nullable', 'string', 'max:100'],
+            'department_name' => ['nullable', 'string', 'max:100'],
+            'applicant_name' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', 'string', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1'],
         ]);
     }
 

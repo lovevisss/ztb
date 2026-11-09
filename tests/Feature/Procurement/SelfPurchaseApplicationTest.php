@@ -123,7 +123,7 @@ class SelfPurchaseApplicationTest extends TestCase
         ])->assertForbidden();
 
         $this->actingAs($other)->get(route('procurement.applications.index'))
-            ->assertSuccessful()->assertInertia(fn ($page) => $page->component('procurement/Index')->has('applications', 0));
+            ->assertSuccessful()->assertInertia(fn ($page) => $page->component('procurement/Index')->has('records', 0));
     }
 
     public function test_fixed_asset_can_be_explicitly_false(): void

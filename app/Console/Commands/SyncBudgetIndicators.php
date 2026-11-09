@@ -22,7 +22,7 @@ class SyncBudgetIndicators extends Command
                     'name' => $row->xmmc ?: '未命名预算项目',
                     'director' => $row->xmfzr ?: null,
                     'department_code' => $row->jbbmbm ?: null,
-                    'status' => $row->status ?: null,
+                    'status' => $row->status === null || $row->status === '' ? null : (string) $row->status,
                     'available_cents' => is_numeric($row->syje) ? max(0, (int) round((float) $row->syje * 100)) : null,
                     'updated_at' => now(),
                     'created_at' => now(),

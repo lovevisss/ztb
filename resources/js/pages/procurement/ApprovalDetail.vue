@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import WorkflowDiagram from './WorkflowDiagram.vue';
+
+type FlowNode = { key: string; label: string; state: 'done' | 'active' | 'waiting' | 'stopped'; time?: string | null; person?: string | null; note?: string | null };
 
 type Application = {
     id: number;
@@ -38,6 +42,7 @@ type Step = {
     status: string;
     opinion: string | null;
     acted_at: string | null;
+    assignee_name: string | null;
 };
 type Event = {
     id: number;
@@ -46,6 +51,7 @@ type Event = {
     created_at: string;
 };
 type Attachment = { id: number; kind: string; original_name: string };
+type Engineering = { project_name: string | null; construction_content: string | null; project_overview: string | null; schedule_requirements: string | null; estimated_cost_cents: number | null };
 type User = { id: number; name: string };
 
 const props = defineProps<{
@@ -60,6 +66,7 @@ const props = defineProps<{
     events: Event[];
     attachments: Attachment[];
     lineItems: { id: number; name: string; specification: string | null; quantity: number; unit: string | null; unit_price_cents: number; total_cents: number; remarks: string | null }[];
+    engineering: Engineering | null;
     budgetAllocations: { id: number; code: string | null; name: string; director: string | null; amount_cents: number }[];
     usageDepartmentName: string | null;
     execution: {
@@ -110,6 +117,11 @@ const archiveKindLabel: Record<string, string> = {
     invoice: '发票',
     other_execution: '其他材料',
 };
+const attachmentKindLabel: Record<string, string> = {
+    engineering_bill: '工程清单', demand_document: '采购需求',
+    budget_basis_document: '预算依据', other: '其他附件',
+    ...archiveKindLabel,
+};
 
 const roleLabel: Record<string, string> = {
     department_head: '部门负责人',
@@ -132,6 +144,38 @@ const statusLabel: Record<string, string> = {
     rejected: '已驳回',
     cancelled: '已取消',
 };
+const flowRounds = computed(() => {
+    const attempts = [...new Set(props.steps.map((step) => step.attempt))];
+    const submissions = props.events.filter((event) => ['submitted', 'resubmitted'].includes(event.event));
+    if (!attempts.length) {
+        return [{ attempt: 0, nodes: [{ key: 'draft', label: '待提交', state: 'active' as const, time: null }] }];
+    }
+    return attempts.map((attempt, index) => {
+        const steps = props.steps.filter((step) => step.attempt === attempt);
+        const terminal = steps.find((step) => ['returned', 'rejected'].includes(step.status));
+        const last = steps.at(-1);
+        const complete = steps.length > 0 && steps.every((step) => step.status === 'approved');
+        const nodes: FlowNode[] = [{
+            key: `submit-${attempt}`, label: index ? '重新提交' : '提交', state: 'done',
+            time: submissions[index]?.created_at ?? null,
+        }];
+        for (const step of steps) nodes.push({
+            key: String(step.id), label: roleLabel[step.role_code] ?? step.role_code,
+            state: step.status === 'approved' ? 'done' : step.status === 'pending' ? 'active' : ['returned', 'rejected', 'cancelled'].includes(step.status) ? 'stopped' : 'waiting',
+            time: step.acted_at, person: step.assignee_name,
+            note: step.opinion ? `${statusLabel[step.status] ?? step.status}：${step.opinion}` : null,
+        });
+        nodes.push({
+            key: `end-${attempt}`, label: terminal ? statusLabel[terminal.status] ?? terminal.status : '完成',
+            state: terminal ? 'stopped' : complete ? 'done' : 'waiting',
+            time: terminal?.acted_at ?? (complete ? last?.acted_at : null),
+        });
+        return { attempt, nodes };
+    });
+});
+const visibleAttachments = computed(() => props.attachments.filter((item) =>
+    props.application.category === '工程类' || item.kind !== 'engineering_bill',
+));
 </script>
 
 <template>
@@ -140,9 +184,9 @@ const statusLabel: Record<string, string> = {
         class="mx-auto w-full max-w-6xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
     >
         <Link
-            href="/procurement/approvals"
+            :href="currentUserId === application.applicant_id ? '/procurement/applications' : '/procurement/approvals'"
             class="text-sm text-[var(--brand-primary)] hover:underline"
-            >← 返回待办</Link
+            >← 返回{{ currentUserId === application.applicant_id ? '申请列表' : '待办' }}</Link
         >
         <header
             class="mt-[var(--brand-space-32)] flex flex-wrap items-end justify-between gap-[var(--brand-space-16)] border-b border-[var(--brand-border)] pb-[var(--brand-space-32)]"
@@ -187,6 +231,10 @@ const statusLabel: Record<string, string> = {
                 >{{ sourceApplication.project_number }} ·
                 {{ sourceApplication.title }}</span
             >
+        </div>
+
+        <div class="mt-[var(--brand-space-32)] space-y-[var(--brand-space-16)]">
+            <WorkflowDiagram v-for="round in flowRounds" :key="round.attempt" :title="round.attempt ? `第 ${round.attempt} 轮审批流程` : '申请流程'" :nodes="round.nodes" />
         </div>
 
         <div
@@ -316,13 +364,23 @@ const statusLabel: Record<string, string> = {
                         <p class="mt-2">特殊采购：{{ application.is_special_purchase ? '是' : '否' }}　非支出项目：{{ application.is_non_expenditure ? '是' : '否' }}</p>
                         <p v-if="application.special_purchase_reason" class="mt-2 whitespace-pre-wrap">特殊采购方式理由：{{ application.special_purchase_reason }}</p>
                         <p v-if="application.remarks" class="mt-2 whitespace-pre-wrap">备注：{{ application.remarks }}</p>
-                        <h3 class="mt-5 font-semibold">采购清单</h3>
-                        <div class="mt-2 overflow-x-auto"><table class="w-full min-w-[600px] text-left"><thead><tr class="border-b border-[var(--brand-border)]"><th>名称</th><th>技术参数</th><th>数量</th><th>单价（元）</th><th>总价（元）</th></tr></thead><tbody><tr v-for="item in lineItems" :key="item.id" class="border-b border-[var(--brand-border)]"><td>{{ item.name }}</td><td>{{ item.specification }}</td><td>{{ item.quantity }} {{ item.unit }}</td><td>{{ (item.unit_price_cents / 100).toFixed(2) }}</td><td>{{ (item.total_cents / 100).toFixed(2) }}</td></tr></tbody></table></div>
+                        <div v-if="application.category === '工程类' && engineering" class="mt-5 space-y-2">
+                            <h3 class="font-semibold">工程采购清单</h3>
+                            <p>工程名称：{{ engineering.project_name }}</p>
+                            <p class="whitespace-pre-wrap">项目建设内容：{{ engineering.construction_content }}</p>
+                            <p class="whitespace-pre-wrap">项目概况：{{ engineering.project_overview }}</p>
+                            <p class="whitespace-pre-wrap">项目工期要求：{{ engineering.schedule_requirements }}</p>
+                            <p>工程总造价：¥{{ ((engineering.estimated_cost_cents ?? 0) / 100).toFixed(2) }}</p>
+                        </div>
+                        <template v-else-if="application.category !== '工程类'">
+                            <h3 class="mt-5 font-semibold">采购清单</h3>
+                            <div class="mt-2 overflow-x-auto"><table class="w-full min-w-[680px] text-left"><thead><tr class="border-b border-[var(--brand-border)]"><th>名称</th><th>技术参数</th><th>数量</th><th>单价（元）</th><th>总价（元）</th><th>备注</th></tr></thead><tbody><tr v-for="item in lineItems" :key="item.id" class="border-b border-[var(--brand-border)]"><td>{{ item.name }}</td><td>{{ item.specification }}</td><td>{{ item.quantity }} {{ item.unit }}</td><td>{{ (item.unit_price_cents / 100).toFixed(2) }}</td><td>{{ (item.total_cents / 100).toFixed(2) }}</td><td>{{ item.remarks || '—' }}</td></tr></tbody></table></div>
+                        </template>
                         <h3 class="mt-5 font-semibold">项目预算指标</h3>
                         <ul class="mt-2 space-y-1"><li v-for="allocation in budgetAllocations" :key="allocation.id">{{ allocation.code }} · {{ allocation.name }} · {{ allocation.director }}：¥{{ (allocation.amount_cents / 100).toFixed(2) }}</li></ul>
                     </div>
                     <div
-                        v-if="attachments.length"
+                        v-if="visibleAttachments.length"
                         class="mt-[var(--brand-space-24)] border-t border-[var(--brand-border)] pt-[var(--brand-space-24)]"
                     >
                         <h3
@@ -333,11 +391,12 @@ const statusLabel: Record<string, string> = {
                         <ul
                             class="mt-[var(--brand-space-16)] space-y-[var(--brand-space-8)]"
                         >
-                            <li v-for="file in attachments" :key="file.id">
+                            <li v-for="file in visibleAttachments" :key="file.id" class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--brand-border)] py-2">
+                                <span class="text-xs text-[var(--brand-muted)]">{{ attachmentKindLabel[file.kind] ?? file.kind }} · {{ file.original_name }}</span>
                                 <a
                                     :href="`/procurement/attachments/${file.id}/download`"
                                     class="text-sm text-[var(--brand-primary)] hover:underline"
-                                    >{{ file.original_name }} ↗</a
+                                    >下载</a
                                 >
                             </li>
                         </ul>

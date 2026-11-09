@@ -4,11 +4,12 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 
 type Item = { name: string; specification: string; quantity: number; unit_price: number; unit: string; remarks: string };
 type SavedItem = { name: string; specification: string | null; quantity: number; unit_price_cents: number; unit: string | null; remarks: string | null };
-type Indicator = { id: number; code: string | null; name: string; director: string | null; available_cents: number | null };
+type Indicator = { id: number; code: string | null; name: string; director: string | null; department_code: string | null; department_name: string | null; status: string | null; available_cents: number | null };
 type CatalogItem = { id: number; name: string; specification: string | null; unit: string | null; unit_price_cents: number; remarks: string | null };
 type Application = { id: number; project_number: string | null; title: string | null; category: string | null; contact_phone: string | null; purchase_method: string | null; is_special_purchase: boolean; special_purchase_reason: string | null; is_non_expenditure: boolean; has_usage_department: boolean; usage_department_id: number | null; procurement_requirements: string | null; remarks: string | null; budget_basis_note: string | null; budget_cents: number | null };
 type Attachment = { id: number; original_name: string; size: number };
-type Allocation = { budget_indicator_id: number; amount_cents: number };
+type Allocation = { budget_indicator_id: number; amount_cents: number; code: string | null; name: string; director: string | null };
+type Engineering = { project_name: string | null; construction_content: string | null; project_overview: string | null; schedule_requirements: string | null; estimated_cost_cents: number | null };
 
 const props = defineProps<{
     application: Application | null;
@@ -20,8 +21,9 @@ const props = defineProps<{
     departmentName: string | null;
     departments: { id: number; name: string }[];
     items: SavedItem[];
+    engineering: Engineering | null;
+    engineeringBill: Attachment | null;
     allocations: Allocation[];
-    indicators: Indicator[];
     catalog: CatalogItem[];
     canSyncBudgets: boolean;
 }>();
@@ -54,27 +56,84 @@ const itemForm = useForm<{ section: string; items: Item[] }>({
         unit_price: item.unit_price_cents / 100, unit: item.unit ?? '', remarks: item.remarks ?? '',
     })),
 });
+const engineeringForm = useForm({
+    section: 'engineering', category: '工程类',
+    project_name: props.engineering?.project_name ?? '',
+    construction_content: props.engineering?.construction_content ?? '',
+    project_overview: props.engineering?.project_overview ?? '',
+    schedule_requirements: props.engineering?.schedule_requirements ?? '',
+    estimated_cost: props.engineering?.estimated_cost_cents == null ? '' : String(props.engineering.estimated_cost_cents / 100),
+    bill_file: null as File | null,
+});
 const budgetForm = useForm({
     section: 'budget', budget_basis_note: props.application?.budget_basis_note ?? '',
-    allocations: props.allocations.map((a) => ({ budget_indicator_id: a.budget_indicator_id, amount: a.amount_cents / 100 })),
+    allocations: props.allocations.map((a) => ({ budget_indicator_id: a.budget_indicator_id, amount: a.amount_cents / 100, code: a.code, name: a.name, director: a.director })),
 });
+const pickerIndex = ref<number | null>(null);
+const pickerQuery = ref('');
+const pickerDepartment = ref('');
+const pickerStatus = ref('');
+const pickerRows = ref<Indicator[]>([]);
+const pickerDepartments = ref<{ code: string; name: string | null }[]>([]);
+const pickerStatuses = ref<(string | null)[]>([]);
+const pickerPage = ref(1);
+const pickerLastPage = ref(1);
+const pickerTotal = ref(0);
+const pickerLoading = ref(false);
+const pickerError = ref('');
+async function searchIndicators(pageNumber = 1) {
+    pickerLoading.value = true;
+    pickerError.value = '';
+    const params = new URLSearchParams({ page: String(pageNumber) });
+    if (pickerQuery.value.trim()) params.set('q', pickerQuery.value.trim());
+    if (pickerDepartment.value) params.set('department', pickerDepartment.value);
+    if (pickerStatus.value) params.set('status', pickerStatus.value);
+    try {
+        const response = await fetch(`/procurement/budgets?${params}`, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+        if (!response.ok) throw new Error('经费来源查询失败，请稍后重试。');
+        const result = await response.json() as { data: Indicator[]; current_page: number; last_page: number; total: number; departments: { code: string; name: string | null }[]; statuses: (string | null)[] };
+        pickerRows.value = result.data;
+        pickerDepartments.value = result.departments;
+        pickerStatuses.value = result.statuses;
+        pickerPage.value = result.current_page;
+        pickerLastPage.value = result.last_page;
+        pickerTotal.value = result.total;
+    } catch (error) { pickerError.value = error instanceof Error ? error.message : '经费来源查询失败'; }
+    finally { pickerLoading.value = false; }
+}
+function openIndicatorPicker(index: number) {
+    pickerIndex.value = index;
+    void searchIndicators();
+}
+function selectIndicator(indicator: Indicator) {
+    if (indicator.status !== '1' || pickerIndex.value === null) return;
+    const allocation = budgetForm.allocations[pickerIndex.value];
+    if (!allocation) return;
+    allocation.budget_indicator_id = indicator.id;
+    allocation.code = indicator.code;
+    allocation.name = indicator.name;
+    allocation.director = indicator.director;
+    pickerIndex.value = null;
+}
 const attachmentForm = useForm<{ section: string; files: File[] }>({ section: 'attachments', files: [] });
 const catalogForm = useForm({ name: '', specification: '', unit: '', unit_price: 0, remarks: '' });
 const editingCatalogId = ref<number | null>(null);
 const selectedCatalog = ref<number | ''>('');
-const total = computed(() => itemForm.items.reduce((sum, item) => sum + Math.round(Number(item.unit_price || 0) * 100 * Number(item.quantity || 0)), 0) / 100);
+const total = computed(() => basic.category === '工程类'
+    ? Number(engineeringForm.estimated_cost || 0)
+    : itemForm.items.reduce((sum, item) => sum + Math.round(Number(item.unit_price || 0) * 100 * Number(item.quantity || 0)), 0) / 100);
 const allocated = computed(() => budgetForm.allocations.reduce((sum, a) => sum + Number(a.amount || 0), 0));
 const money = (value: number) => value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function blankItem(): Item { return { name: '', specification: '', quantity: 1, unit_price: 0, unit: '', remarks: '' }; }
-function save(section: Tab) {
-    const form = section === 'basic' ? basic : section === 'items' ? itemForm : section === 'budget' ? budgetForm : attachmentForm;
-    const options = { preserveScroll: true, onSuccess: () => { if (section === 'attachments') attachmentForm.files = []; } };
+function save(section: Tab | 'engineering') {
+    const form = section === 'basic' ? basic : section === 'items' ? itemForm : section === 'engineering' ? engineeringForm : section === 'budget' ? budgetForm : attachmentForm;
+    const options = { preserveScroll: true, onSuccess: () => { if (section === 'attachments') attachmentForm.files = []; if (section === 'engineering') engineeringForm.bill_file = null; } };
     if (props.application) form.post(`/procurement/tenders/${props.application.id}/sections`, options);
     else form.post('/procurement/tenders/sections', options);
 }
 function submit() {
-    if (!props.application) { save(tab.value); return; }
+    if (!props.application) { save(tab.value === 'items' && basic.category === '工程类' ? 'engineering' : tab.value); return; }
     router.post(`/procurement/tenders/${props.application.id}/submit`, {}, { preserveScroll: true });
 }
 function addFromCatalog() {
@@ -101,6 +160,9 @@ function removeCatalog(id: number) {
 }
 function chooseFiles(event: Event) {
     attachmentForm.files = Array.from((event.target as HTMLInputElement).files ?? []);
+}
+function chooseEngineeringBill(event: Event) {
+    engineeringForm.bill_file = (event.target as HTMLInputElement).files?.[0] ?? null;
 }
 async function importItems(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
@@ -177,7 +239,19 @@ const importError = ref('');
             </div>
             <button type="button" class="save" :disabled="basic.processing || !departmentAssigned" @click="save('basic')">保存基本信息</button>
         </section>
-        <section v-show="tab === 'items'" class="panel">
+        <section v-show="tab === 'items' && basic.category === '工程类'" class="panel">
+            <h2 class="section-title">采购清单 · 工程类</h2>
+            <div class="space-y-5">
+                <label class="block"><span class="label">*工程名称</span><input v-model="engineeringForm.project_name" class="field" /><small class="error">{{ engineeringForm.errors.project_name }}</small></label>
+                <label class="block"><span class="label">*项目建设内容</span><textarea v-model="engineeringForm.construction_content" class="field min-h-28" placeholder="面积、层数、结构、维修改造的具体内容等" /><small class="error">{{ engineeringForm.errors.construction_content }}</small></label>
+                <label class="block"><span class="label">*项目概况</span><textarea v-model="engineeringForm.project_overview" class="field min-h-28" placeholder="项目经费来源项目说明；如为子项目，说明与总项目的关系" /><small class="error">{{ engineeringForm.errors.project_overview }}</small></label>
+                <label class="block"><span class="label">*项目工期要求</span><textarea v-model="engineeringForm.schedule_requirements" class="field min-h-24" /><small class="error">{{ engineeringForm.errors.schedule_requirements }}</small></label>
+                <label class="block"><span class="label">*工程总造价（元）</span><input v-model="engineeringForm.estimated_cost" class="field" type="number" min="0" step="0.01" /><small class="error">{{ engineeringForm.errors.estimated_cost }}</small></label>
+                <div><span class="label">*清单附件</span><input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" @change="chooseEngineeringBill" /><small class="error">{{ engineeringForm.errors.bill_file }}</small><p v-if="engineeringBill" class="mt-2 text-sm"><a :href="`/procurement/attachments/${engineeringBill.id}/download`" class="text-[var(--brand-primary)] hover:underline">已上传：{{ engineeringBill.original_name }}</a></p></div>
+            </div>
+            <button type="button" class="save" :disabled="engineeringForm.processing || !departmentAssigned" @click="save('engineering')">保存工程清单</button>
+        </section>
+        <section v-show="tab === 'items' && basic.category !== '工程类'" class="panel">
             <h2 class="section-title">采购清单</h2>
             <div class="mb-4 flex flex-wrap items-center gap-3 text-sm">
                 <button type="button" class="action" @click="itemForm.items.push(blankItem())">＋ 添加采购清单</button>
@@ -215,12 +289,31 @@ const importError = ref('');
             <h2 class="section-title">项目预算指标</h2>
             <p class="mb-4 text-sm">采购清单合计：¥{{ money(total) }}　预算指标使用金额合计：¥{{ money(allocated) }}</p>
             <button v-if="canSyncBudgets" type="button" class="action mb-4" @click="router.post('/procurement/budgets/sync')">手动同步预算指标</button>
-            <button type="button" class="action mb-4 ml-3" @click="budgetForm.allocations.push({ budget_indicator_id: 0, amount: 0 })">＋ 添加经费来源</button>
+            <button type="button" class="action mb-4 ml-3" @click="budgetForm.allocations.push({ budget_indicator_id: 0, amount: 0, code: null, name: '', director: null }); openIndicatorPicker(budgetForm.allocations.length - 1)">＋ 添加经费来源</button>
             <p class="error">{{ budgetForm.errors.allocations }}</p>
             <div v-for="(allocation, index) in budgetForm.allocations" :key="index" class="mb-4 grid items-end gap-3 rounded border border-[var(--brand-border)] p-4 md:grid-cols-[1fr_11rem_auto]">
-                <label><span class="label">预算编码 / 预算项目名称 / 负责人</span><select v-model.number="allocation.budget_indicator_id" class="field"><option :value="0">请选择预算指标</option><option v-for="indicator in indicators" :key="indicator.id" :value="indicator.id">{{ indicator.code }} · {{ indicator.name }} · {{ indicator.director }}</option></select></label>
+                <div><span class="label">预算编码 / 预算项目名称 / 负责人</span><button type="button" class="field text-left" @click="openIndicatorPicker(index)">{{ allocation.budget_indicator_id ? `${allocation.code ?? '无代码'} · ${allocation.name} · ${allocation.director ?? '无负责人'}` : '搜索并选择经费来源' }}</button><small class="error">{{ budgetForm.errors[`allocations.${index}.budget_indicator_id` as keyof typeof budgetForm.errors] }}</small></div>
                 <label><span class="label">使用金额（元）</span><input v-model.number="allocation.amount" class="field" type="number" min="0.01" step="0.01" /></label>
                 <button type="button" class="text-[var(--brand-danger)]" @click="budgetForm.allocations.splice(index, 1)">删除</button>
+            </div>
+            <div v-if="pickerIndex !== null" class="mb-5 rounded border border-[var(--brand-primary)] bg-[var(--brand-page)] p-4">
+                <div class="mb-3 flex items-center justify-between"><h3 class="font-semibold">选择经费来源</h3><button type="button" class="text-sm text-[var(--brand-muted)]" @click="pickerIndex = null">关闭</button></div>
+                <form class="grid gap-2 md:grid-cols-[2fr_1fr_1fr_auto]" @submit.prevent="searchIndicators()">
+                    <input v-model="pickerQuery" class="field" placeholder="搜索经费名称或预算代码" aria-label="搜索经费名称或预算代码" />
+                    <select v-model="pickerDepartment" class="field" aria-label="按部门筛选"><option value="">全部部门</option><option v-for="department in pickerDepartments" :key="department.code" :value="department.code">{{ department.name ?? department.code }}</option></select>
+                    <select v-model="pickerStatus" class="field" aria-label="按状态筛选"><option value="">全部状态</option><option v-for="status in pickerStatuses" :key="status ?? '__null'" :value="status ?? '__null'">{{ status === '1' ? '启用' : status === null ? '未标记' : `状态 ${status}` }}</option></select>
+                    <button type="submit" class="action" :disabled="pickerLoading">查询</button>
+                </form>
+                <p v-if="pickerError" class="error mt-2">{{ pickerError }}</p>
+                <p class="my-3 text-xs text-[var(--brand-muted)]">共 {{ pickerTotal }} 条。未启用的经费来源仅供查看。</p>
+                <div class="max-h-72 space-y-2 overflow-y-auto">
+                    <button v-for="indicator in pickerRows" :key="indicator.id" type="button" class="w-full rounded border border-[var(--brand-border)] bg-[var(--brand-card)] p-3 text-left text-sm disabled:opacity-50" :disabled="indicator.status !== '1' || budgetForm.allocations.some((allocation, index) => index !== pickerIndex && allocation.budget_indicator_id === indicator.id)" @click="selectIndicator(indicator)">
+                        <span class="font-medium">{{ indicator.code ?? '无代码' }} · {{ indicator.name }}</span>
+                        <span class="ml-2 text-[var(--brand-muted)]">{{ indicator.director ?? '无负责人' }} · {{ indicator.department_name ?? indicator.department_code ?? '无部门' }} · {{ indicator.status === '1' ? '启用' : indicator.status === null ? '未标记' : `状态 ${indicator.status}` }}</span>
+                    </button>
+                    <p v-if="!pickerLoading && pickerRows.length === 0" class="text-sm text-[var(--brand-muted)]">没有匹配的经费来源。</p>
+                </div>
+                <div class="mt-3 flex items-center justify-end gap-3 text-sm"><button type="button" :disabled="pickerPage <= 1 || pickerLoading" @click="searchIndicators(pickerPage - 1)">上一页</button><span>{{ pickerPage }} / {{ pickerLastPage }}</span><button type="button" :disabled="pickerPage >= pickerLastPage || pickerLoading" @click="searchIndicators(pickerPage + 1)">下一页</button></div>
             </div>
             <label><span class="label">预算测算说明</span><textarea v-model="budgetForm.budget_basis_note" class="field min-h-24" /></label>
             <button type="button" class="save" :disabled="budgetForm.processing || !departmentAssigned" @click="save('budget')">保存预算指标</button>

@@ -23,11 +23,12 @@ class TenderSectionsController extends Controller
     public function create(Request $request, TenderNumber $numbers): RedirectResponse
     {
         abort_if($request->user()->department_id === null, 422, '当前用户尚未关联部门');
-        $section = $request->validate(['section' => ['required', Rule::in(['basic', 'items', 'budget', 'attachments'])]])['section'];
+        $section = $request->validate(['section' => ['required', Rule::in(['basic', 'items', 'engineering', 'budget', 'attachments'])]])['section'];
         $data = $this->sectionData($request, $section);
         $paths = [];
+        $oldPaths = [];
         try {
-            $application = DB::transaction(function () use ($request, $numbers, $section, $data, &$paths) {
+            $application = DB::transaction(function () use ($request, $numbers, $section, $data, &$paths, &$oldPaths) {
                 $application = ProcurementApplication::create([
                     'applicant_id' => $request->user()->id,
                     'department_id' => $request->user()->department_id,
@@ -35,7 +36,7 @@ class TenderSectionsController extends Controller
                     'status' => 'draft',
                     'project_number' => $numbers->next(),
                 ]);
-                $this->saveSection($request, $application, $section, $data, $paths);
+                $this->saveSection($request, $application, $section, $data, $paths, $oldPaths);
 
                 return $application;
             });
@@ -43,24 +44,29 @@ class TenderSectionsController extends Controller
             Storage::disk('local')->delete($paths);
             throw $exception;
         }
+        Storage::disk('local')->delete($oldPaths);
 
-        return to_route('procurement.tenders.edit', ['application' => $application->id, 'tab' => $section]);
+        return to_route('procurement.tenders.edit', ['application' => $application->id, 'tab' => $section === 'engineering' ? 'items' : $section]);
     }
 
     public function update(Request $request, ProcurementApplication $application): RedirectResponse
     {
         $this->authorizeDraft($request, $application);
-        $section = $request->validate(['section' => ['required', Rule::in(['basic', 'items', 'budget', 'attachments'])]])['section'];
-        $data = $this->sectionData($request, $section);
+        $section = $request->validate(['section' => ['required', Rule::in(['basic', 'items', 'engineering', 'budget', 'attachments'])]])['section'];
+        $data = $this->sectionData($request, $section, $application);
         $paths = [];
+        $oldPaths = [];
         try {
-            DB::transaction(fn () => $this->saveSection($request, $application, $section, $data, $paths));
+            DB::transaction(function () use ($request, $application, $section, $data, &$paths, &$oldPaths) {
+                $this->saveSection($request, $application, $section, $data, $paths, $oldPaths);
+            });
         } catch (Throwable $exception) {
             Storage::disk('local')->delete($paths);
             throw $exception;
         }
+        Storage::disk('local')->delete($oldPaths);
 
-        return to_route('procurement.tenders.edit', ['application' => $application->id, 'tab' => $section]);
+        return to_route('procurement.tenders.edit', ['application' => $application->id, 'tab' => $section === 'engineering' ? 'items' : $section]);
     }
 
     public function submit(Request $request, ProcurementApplication $application, ApprovalWorkflow $workflow): RedirectResponse
@@ -80,17 +86,33 @@ class TenderSectionsController extends Controller
             if ($application->has_usage_department && $application->usage_department_id === null) {
                 $errors['usage_department_id'] = '请选择使用部门。';
             }
-            $items = DB::table('procurement_line_items')->where('application_id', $application->id);
-            $total = (int) $items->sum('total_cents');
-            if ($items->count() === 0 || $total <= 0) {
-                $errors['items'] = '请添加有效的采购清单。';
+            if ($application->category === '工程类') {
+                $engineering = DB::table('procurement_engineering_details')->where('application_id', $application->id)->first();
+                foreach (['project_name', 'construction_content', 'project_overview', 'schedule_requirements'] as $field) {
+                    if (blank($engineering?->{$field})) {
+                        $errors[$field] = '请填写此项。';
+                    }
+                }
+                $total = (int) ($engineering?->estimated_cost_cents ?? 0);
+                if ($total <= 0) {
+                    $errors['estimated_cost'] = '请填写有效的工程总造价。';
+                }
+                if (! ProcurementAttachment::query()->where('application_id', $application->id)->where('kind', 'engineering_bill')->exists()) {
+                    $errors['bill_file'] = '请上传工程清单附件。';
+                }
+            } else {
+                $items = DB::table('procurement_line_items')->where('application_id', $application->id);
+                $total = (int) $items->sum('total_cents');
+                if ($items->count() === 0 || $total <= 0) {
+                    $errors['items'] = '请添加有效的采购清单。';
+                }
             }
             if ((int) DB::table('procurement_budget_allocations')->where('application_id', $application->id)->sum('amount_cents') !== $total) {
                 $errors['budget'] = '预算指标使用金额合计须与采购清单合计一致。';
             }
             $rule = ProcurementClassificationRule::effectiveFor($application->department_id);
             if ($total < $rule->threshold_cents) {
-                $errors['items'] = '该金额应使用部门自行采购申请。';
+                $errors[$application->category === '工程类' ? 'estimated_cost' : 'items'] = '该金额应使用部门自行采购申请。';
             }
             if ($errors !== []) {
                 throw ValidationException::withMessages($errors);
@@ -168,7 +190,7 @@ class TenderSectionsController extends Controller
         abort_unless($application->application_form === 'central_tender' && in_array($application->status, ['draft', 'returned'], true), 403);
     }
 
-    private function sectionData(Request $request, string $section): array
+    private function sectionData(Request $request, string $section, ?ProcurementApplication $application = null): array
     {
         return match ($section) {
             'basic' => $this->basicData($request),
@@ -181,17 +203,44 @@ class TenderSectionsController extends Controller
                 'items.*.unit' => ['nullable', 'string', 'max:50'],
                 'items.*.remarks' => ['nullable', 'string'],
             ]),
-            'budget' => $request->validate([
-                'allocations' => ['present', 'array', 'max:100'],
-                'allocations.*.budget_indicator_id' => ['required', 'integer', 'distinct', 'exists:budget_indicators,id'],
-                'allocations.*.amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
-                'budget_basis_note' => ['nullable', 'string'],
+            'engineering' => $request->validate([
+                'category' => ['required', Rule::in(['工程类'])],
+                'project_name' => ['nullable', 'string', 'max:255'],
+                'construction_content' => ['nullable', 'string'],
+                'project_overview' => ['nullable', 'string'],
+                'schedule_requirements' => ['nullable', 'string'],
+                'estimated_cost' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
+                'bill_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:20480'],
             ]),
+            'budget' => $this->budgetData($request, $application),
             'attachments' => $request->validate([
                 'files' => ['nullable', 'array', 'max:10'],
                 'files.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:20480'],
             ]),
         };
+    }
+
+    private function budgetData(Request $request, ?ProcurementApplication $application): array
+    {
+        $data = $request->validate([
+            'allocations' => ['present', 'array', 'max:100'],
+            'allocations.*.budget_indicator_id' => ['required', 'integer', 'distinct', 'exists:budget_indicators,id'],
+            'allocations.*.amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
+            'budget_basis_note' => ['nullable', 'string'],
+        ]);
+        foreach ($data['allocations'] as $index => $allocation) {
+            $indicator = DB::table('budget_indicators')->find($allocation['budget_indicator_id']);
+            $alreadySelected = $application !== null && DB::table('procurement_budget_allocations')
+                ->where('application_id', $application->id)
+                ->where('budget_indicator_id', $indicator->id)->exists();
+            if ($indicator->status !== '1' && ! $alreadySelected) {
+                throw ValidationException::withMessages([
+                    "allocations.{$index}.budget_indicator_id" => '该经费来源未启用，不能新增选择。',
+                ]);
+            }
+        }
+
+        return $data;
     }
 
     private function basicData(Request $request): array
@@ -221,13 +270,14 @@ class TenderSectionsController extends Controller
         return $data;
     }
 
-    private function saveSection(Request $request, ProcurementApplication $application, string $section, array $data, array &$paths): void
+    private function saveSection(Request $request, ProcurementApplication $application, string $section, array $data, array &$paths, array &$oldPaths): void
     {
         if ($section === 'basic') {
             if (! $data['has_usage_department']) {
                 $data['usage_department_id'] = null;
             }
             $application->update($data);
+            $this->refreshActiveBudget($application);
         } elseif ($section === 'items') {
             DB::table('procurement_line_items')->where('application_id', $application->id)->delete();
             $total = 0;
@@ -243,14 +293,52 @@ class TenderSectionsController extends Controller
                     'remarks' => $item['remarks'] ?? null, 'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
-            $application->update(['budget_cents' => $total]);
+            $this->refreshActiveBudget($application);
+        } elseif ($section === 'engineering') {
+            $application->update(['category' => '工程类']);
+            DB::table('procurement_engineering_details')->updateOrInsert(
+                ['application_id' => $application->id],
+                [
+                    'project_name' => $data['project_name'] ?? null,
+                    'construction_content' => $data['construction_content'] ?? null,
+                    'project_overview' => $data['project_overview'] ?? null,
+                    'schedule_requirements' => $data['schedule_requirements'] ?? null,
+                    'estimated_cost_cents' => isset($data['estimated_cost']) ? (int) round($data['estimated_cost'] * 100) : null,
+                    'created_at' => now(), 'updated_at' => now(),
+                ],
+            );
+            if ($request->hasFile('bill_file')) {
+                $file = $request->file('bill_file');
+                $path = $file->store('procurement/'.$application->id, 'local');
+                if ($path === false) {
+                    throw new \RuntimeException('工程清单附件存储失败');
+                }
+                $paths[] = $path;
+                $oldFiles = ProcurementAttachment::query()->where('application_id', $application->id)->where('kind', 'engineering_bill')->get();
+                foreach ($oldFiles as $oldFile) {
+                    $oldPaths[] = $oldFile->path;
+                    $oldFile->delete();
+                }
+                ProcurementAttachment::create([
+                    'application_id' => $application->id, 'uploaded_by' => $request->user()->id,
+                    'kind' => 'engineering_bill', 'original_name' => $file->getClientOriginalName(),
+                    'disk' => 'local', 'path' => $path, 'mime_type' => $file->getMimeType(),
+                    'size' => $file->getSize(),
+                ]);
+            }
+            $this->refreshActiveBudget($application);
         } elseif ($section === 'budget') {
+            $previous = DB::table('procurement_budget_allocations')->where('application_id', $application->id)
+                ->get()->keyBy('budget_indicator_id');
             DB::table('procurement_budget_allocations')->where('application_id', $application->id)->delete();
             foreach ($data['allocations'] as $allocation) {
                 $indicator = DB::table('budget_indicators')->find($allocation['budget_indicator_id']);
+                $snapshot = $previous->get($indicator->id);
                 DB::table('procurement_budget_allocations')->insert([
                     'application_id' => $application->id, 'budget_indicator_id' => $indicator->id,
-                    'code' => $indicator->code, 'name' => $indicator->name, 'director' => $indicator->director,
+                    'code' => $snapshot?->code ?? $indicator->code,
+                    'name' => $snapshot?->name ?? $indicator->name,
+                    'director' => $snapshot?->director ?? $indicator->director,
                     'amount_cents' => (int) round($allocation['amount'] * 100),
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
@@ -271,5 +359,13 @@ class TenderSectionsController extends Controller
                 ]);
             }
         }
+    }
+
+    private function refreshActiveBudget(ProcurementApplication $application): void
+    {
+        $total = $application->category === '工程类'
+            ? DB::table('procurement_engineering_details')->where('application_id', $application->id)->value('estimated_cost_cents')
+            : DB::table('procurement_line_items')->where('application_id', $application->id)->sum('total_cents');
+        $application->update(['budget_cents' => $total]);
     }
 }

@@ -5,7 +5,9 @@ namespace Tests\Feature\Procurement;
 use App\Models\User;
 use App\Services\TenderNumber;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class TenderSectionsTest extends TestCase
@@ -58,6 +60,59 @@ class TenderSectionsTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('procurement/TenderForm')->has('catalog', 0));
         $this->actingAs($alice)->get(route('procurement.tenders.new-form'))
             ->assertInertia(fn ($page) => $page->component('procurement/TenderForm')->has('catalog', 1));
+    }
+
+    public function test_budget_indicator_search_filters_all_synced_records_and_paginates(): void
+    {
+        $user = $this->user();
+        DB::table('departments')->where('id', $user->department_id)->update(['external_code' => 'IT']);
+        foreach (range(1, 27) as $index) {
+            DB::table('budget_indicators')->insert([
+                'source_id' => (string) $index,
+                'code' => 'YS'.str_pad((string) $index, 3, '0', STR_PAD_LEFT),
+                'name' => $index === 27 ? '实验室建设' : '教学经费'.$index,
+                'director' => '张老师', 'department_code' => $index === 27 ? 'OTHER' : 'IT',
+                'status' => $index === 27 ? '0' : '1',
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $this->actingAs($user)->getJson(route('procurement.budgets.index'))
+            ->assertOk()->assertJsonPath('total', 27)->assertJsonPath('last_page', 2)->assertJsonCount(25, 'data');
+        $this->actingAs($user)->getJson(route('procurement.budgets.index', ['q' => '实验室']))
+            ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.status', '0');
+        $this->actingAs($user)->getJson(route('procurement.budgets.index', ['q' => 'YS027']))
+            ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.name', '实验室建设');
+        $this->actingAs($user)->getJson(route('procurement.budgets.index', ['department' => 'IT', 'status' => '1']))
+            ->assertOk()->assertJsonPath('total', 26)->assertJsonPath('data.0.department_name', '信息中心');
+        $this->actingAs($user)->getJson(route('procurement.budgets.index', ['department' => 'OTHER', 'status' => '0']))
+            ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.department_code', 'OTHER');
+    }
+
+    public function test_inactive_budget_cannot_be_newly_selected_but_saved_snapshot_survives(): void
+    {
+        $user = $this->user();
+        $indicator = DB::table('budget_indicators')->insertGetId([
+            'source_id' => 'legacy', 'code' => 'YS001', 'name' => '旧经费', 'status' => '0',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $payload = ['section' => 'budget', 'allocations' => [['budget_indicator_id' => $indicator, 'amount' => 100000]]];
+        $this->actingAs($user)->post(route('procurement.tenders.sections.create'), $payload)
+            ->assertSessionHasErrors('allocations.0.budget_indicator_id');
+        $this->assertDatabaseCount('procurement_applications', 0);
+
+        DB::table('budget_indicators')->where('id', $indicator)->update(['status' => '1']);
+        $this->actingAs($user)->post(route('procurement.tenders.sections.create'), $payload)
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $applicationId = DB::table('procurement_applications')->value('id');
+        DB::table('budget_indicators')->where('id', $indicator)->update(['status' => '0', 'name' => '已改名经费']);
+        $this->actingAs($user)->post(route('procurement.tenders.sections.update', $applicationId), $payload)
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('procurement_budget_allocations', [
+            'application_id' => $applicationId, 'budget_indicator_id' => $indicator,
+            'code' => 'YS001', 'name' => '旧经费',
+        ]);
+        $this->actingAs($user)->get(route('procurement.tenders.edit', $applicationId))
+            ->assertInertia(fn ($page) => $page->where('allocations.0.name', '旧经费'));
     }
 
     public function test_number_sequence_resets_on_next_day(): void
@@ -145,7 +200,7 @@ class TenderSectionsTest extends TestCase
         ])->assertRedirect();
         $this->actingAs($applicant)->post(route('procurement.tenders.sections.submit', $id))->assertSessionHasErrors('budget');
         $indicator = DB::table('budget_indicators')->insertGetId([
-            'source_id' => 'test', 'name' => '教学经费', 'created_at' => now(), 'updated_at' => now(),
+            'source_id' => 'test', 'name' => '教学经费', 'status' => '1', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
             'section' => 'budget', 'allocations' => [['budget_indicator_id' => $indicator, 'amount' => 100000]],
@@ -174,12 +229,83 @@ class TenderSectionsTest extends TestCase
         $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
             'section' => 'items', 'items' => [['name' => '设备', 'quantity' => 1, 'unit_price' => 100000]],
         ])->assertRedirect();
-        $indicator = DB::table('budget_indicators')->insertGetId(['source_id' => 'test', 'name' => '经费', 'created_at' => now(), 'updated_at' => now()]);
+        $indicator = DB::table('budget_indicators')->insertGetId(['source_id' => 'test', 'name' => '经费', 'status' => '1', 'created_at' => now(), 'updated_at' => now()]);
         $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
             'section' => 'budget', 'allocations' => [['budget_indicator_id' => $indicator, 'amount' => 100000]],
         ])->assertRedirect();
         $this->actingAs($applicant)->post(route('procurement.tenders.sections.submit', $id))
             ->assertSessionHasErrors('usage_department_id');
         $this->assertDatabaseCount('approval_steps', 0);
+    }
+
+    public function test_engineering_draft_keeps_ordinary_items_and_uses_engineering_cost(): void
+    {
+        $user = $this->user();
+        $this->actingAs($user)->post(route('procurement.tenders.sections.create'), [
+            'section' => 'items', 'items' => [['name' => '电脑', 'quantity' => 1, 'unit_price' => 50000]],
+        ])->assertRedirect();
+        $id = DB::table('procurement_applications')->value('id');
+        $this->actingAs($user)->post(route('procurement.tenders.sections.update', $id), [
+            'section' => 'engineering', 'category' => '工程类', 'project_name' => '装修工程',
+            'estimated_cost' => 100000,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('procurement_applications', ['id' => $id, 'category' => '工程类', 'budget_cents' => 10_000_000]);
+        $this->assertDatabaseHas('procurement_line_items', ['application_id' => $id, 'name' => '电脑']);
+        $this->actingAs($user)->get(route('procurement.tenders.edit', $id))
+            ->assertInertia(fn ($page) => $page->component('procurement/TenderForm')->where('engineering.project_name', '装修工程')->has('items', 1));
+
+        $this->actingAs($user)->post(route('procurement.tenders.sections.update', $id), [
+            'section' => 'basic', 'category' => '货物类', 'is_special_purchase' => false,
+            'is_non_expenditure' => false, 'has_usage_department' => false,
+        ])->assertRedirect();
+        $this->assertDatabaseHas('procurement_applications', ['id' => $id, 'category' => '货物类', 'budget_cents' => 5_000_000]);
+        $this->assertDatabaseHas('procurement_engineering_details', ['application_id' => $id, 'project_name' => '装修工程']);
+    }
+
+    public function test_engineering_submission_requires_fields_and_bill_then_uses_its_cost(): void
+    {
+        Storage::fake('local');
+        $applicant = $this->user();
+        foreach (['department_head', 'procurement_manager'] as $role) {
+            $approver = User::factory()->create(['department_id' => $applicant->department_id]);
+            DB::table('role_user')->insert(['user_id' => $approver->id, 'role_id' => DB::table('roles')->where('code', $role)->value('id')]);
+        }
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.create'), [
+            'section' => 'basic', 'title' => '教学楼装修', 'category' => '工程类',
+            'contact_phone' => '13800138000', 'procurement_requirements' => '装修教学楼',
+            'is_special_purchase' => false, 'is_non_expenditure' => false, 'has_usage_department' => false,
+        ])->assertRedirect();
+        $id = DB::table('procurement_applications')->value('id');
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
+            'section' => 'engineering', 'category' => '工程类', 'project_name' => '教学楼装修', 'estimated_cost' => 100000,
+        ])->assertRedirect();
+        $indicator = DB::table('budget_indicators')->insertGetId(['source_id' => 'engineering', 'name' => '工程经费', 'status' => '1', 'created_at' => now(), 'updated_at' => now()]);
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
+            'section' => 'budget', 'allocations' => [['budget_indicator_id' => $indicator, 'amount' => 100000]],
+        ])->assertRedirect();
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.submit', $id))
+            ->assertSessionHasErrors(['construction_content', 'project_overview', 'schedule_requirements', 'bill_file']);
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
+            'section' => 'engineering', 'category' => '工程类', 'project_name' => '教学楼装修',
+            'construction_content' => '教室改造', 'project_overview' => '教学楼项目',
+            'schedule_requirements' => '60天', 'estimated_cost' => 100000,
+            'bill_file' => UploadedFile::fake()->create('工程清单.pdf', 10, 'application/pdf'),
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $oldPath = DB::table('procurement_attachments')->where('application_id', $id)->where('kind', 'engineering_bill')->value('path');
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
+            'section' => 'engineering', 'category' => '工程类', 'project_name' => '教学楼装修',
+            'construction_content' => '教室改造', 'project_overview' => '教学楼项目',
+            'schedule_requirements' => '60天', 'estimated_cost' => 100000,
+            'bill_file' => UploadedFile::fake()->create('更新清单.pdf', 12, 'application/pdf'),
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        Storage::disk('local')->assertMissing($oldPath);
+        $this->assertDatabaseHas('procurement_attachments', ['application_id' => $id, 'kind' => 'engineering_bill', 'original_name' => '更新清单.pdf']);
+        $this->assertSame(1, DB::table('procurement_attachments')->where('application_id', $id)->where('kind', 'engineering_bill')->count());
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.submit', $id))
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('procurement_applications', ['id' => $id, 'status' => 'submitted', 'budget_cents' => 10_000_000]);
+        $this->assertDatabaseHas('procurement_attachments', ['application_id' => $id, 'kind' => 'engineering_bill']);
+        $this->actingAs($applicant)->get(route('procurement.applications.show', $id))
+            ->assertInertia(fn ($page) => $page->component('procurement/ApprovalDetail')->where('engineering.project_name', '教学楼装修'));
     }
 }

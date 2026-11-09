@@ -120,6 +120,10 @@ class ApprovalWorkflowTest extends TestCase
             'action' => 'return', 'opinion' => '请补充说明',
         ])->assertRedirect();
         $this->assertDatabaseHas('procurement_applications', ['id' => $id, 'status' => 'returned']);
+        $this->actingAs($applicant)->get(route('procurement.applications.show', $id))
+            ->assertInertia(fn ($page) => $page->component('procurement/ApprovalDetail')
+                ->where('steps.0.status', 'returned')->where('steps.0.assignee_name', $head->name)
+                ->whereNot('steps.0.acted_at', null)->where('events.0.event', 'submitted'));
 
         $this->actingAs($applicant)->put(route('procurement.applications.update', $id), [
             'intent' => 'submit', 'title' => '补充后的项目', 'budget' => 90000,
@@ -131,6 +135,9 @@ class ApprovalWorkflowTest extends TestCase
         $this->assertDatabaseHas('approval_steps', ['id' => $first->id, 'attempt' => 1, 'status' => 'returned', 'opinion' => '请补充说明']);
         $this->assertDatabaseHas('approval_steps', ['application_id' => $id, 'attempt' => 2, 'position' => 1, 'status' => 'pending']);
         $this->assertSame(4, DB::table('approval_steps')->where('application_id', $id)->count());
+        $this->actingAs($applicant)->get(route('procurement.applications.show', $id))
+            ->assertInertia(fn ($page) => $page->has('steps', 4)->where('steps.2.attempt', 2)
+                ->where('events.2.event', 'resubmitted'));
     }
 
     public function test_rejection_terminates_current_application_and_requires_new_one(): void

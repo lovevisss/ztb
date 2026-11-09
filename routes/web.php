@@ -3,6 +3,7 @@
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\ApprovalTemplateController;
 use App\Http\Controllers\CentralTenderApplicationController;
+use App\Http\Controllers\BudgetIndicatorController;
 use App\Http\Controllers\TenderSectionsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LegacyProcurementController;
@@ -40,6 +41,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/organization/sync', [SchoolOrganizationController::class, 'sync'])->name('organization.sync');
     Route::put('admin/organization/positions/{code}/roles', [SchoolOrganizationController::class, 'updatePositionRoles'])->name('organization.position-roles.update');
     Route::get('procurement/applications', [ProcurementApplicationController::class, 'index'])->name('procurement.applications.index');
+    Route::get('procurement/applications/export', [ProcurementApplicationController::class, 'export'])->name('procurement.applications.export');
     Route::get('procurement/applications/create', [ProcurementApplicationController::class, 'create'])->name('procurement.applications.create');
     Route::post('procurement/applications', [ProcurementApplicationController::class, 'store'])->name('procurement.applications.store');
     Route::get('procurement/applications/{application}/edit', [ProcurementApplicationController::class, 'edit'])->name('procurement.applications.edit');
@@ -53,6 +55,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('procurement/catalog/{item}', [TenderSectionsController::class, 'catalogUpdate'])->name('procurement.catalog.update');
     Route::delete('procurement/catalog/{item}', [TenderSectionsController::class, 'catalogDelete'])->name('procurement.catalog.delete');
     Route::post('procurement/budgets/sync', [TenderSectionsController::class, 'syncBudgets'])->name('procurement.budgets.sync');
+    Route::get('procurement/budgets', [BudgetIndicatorController::class, 'index'])->name('procurement.budgets.index');
     Route::post('procurement/tenders', [CentralTenderApplicationController::class, 'store'])->name('procurement.tenders.store');
     Route::get('procurement/tenders/{application}/edit', [CentralTenderApplicationController::class, 'edit'])->name('procurement.tenders.edit');
     Route::put('procurement/tenders/{application}', [CentralTenderApplicationController::class, 'update'])->name('procurement.tenders.update');
