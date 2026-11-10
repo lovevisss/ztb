@@ -17,40 +17,39 @@ class BudgetIndicatorController extends Controller
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
         $query = DB::table('budget_indicators')
-            ->leftJoin('departments', 'departments.external_code', '=', 'budget_indicators.department_code')
+            ->where('source', 'school_source')
             ->select([
-                'budget_indicators.id', 'budget_indicators.code', 'budget_indicators.name',
-                'budget_indicators.director', 'budget_indicators.department_code',
-                'departments.name as department_name', 'budget_indicators.status',
-                'budget_indicators.available_cents',
+                'id', 'code', 'name', 'director', 'department_code',
+                'department_name', 'status', 'available_cents',
             ]);
         if (filled($filters['q'] ?? null)) {
             $term = trim($filters['q']);
             $query->where(function ($nested) use ($term) {
-                $nested->where('budget_indicators.name', 'like', '%'.$term.'%')
-                    ->orWhere('budget_indicators.code', 'like', '%'.$term.'%');
+                $nested->where('name', 'like', '%'.$term.'%')
+                    ->orWhere('code', 'like', '%'.$term.'%');
             });
         }
         if (filled($filters['department'] ?? null)) {
-            $query->where('budget_indicators.department_code', $filters['department']);
+            $query->where('department_code', $filters['department']);
         }
         if (filled($filters['status'] ?? null)) {
             $filters['status'] === '__null'
-                ? $query->whereNull('budget_indicators.status')
-                : $query->where('budget_indicators.status', $filters['status']);
+                ? $query->whereNull('status')
+                : $query->where('status', $filters['status']);
         }
-        $page = $query->orderBy('budget_indicators.name')->orderBy('budget_indicators.id')->paginate(25);
+        $page = $query->orderBy('name')->orderBy('id')->paginate(25);
         $departments = DB::table('budget_indicators')
-            ->leftJoin('departments', 'departments.external_code', '=', 'budget_indicators.department_code')
-            ->whereNotNull('budget_indicators.department_code')
-            ->where('budget_indicators.department_code', '!=', '')
-            ->distinct()->orderBy('budget_indicators.department_code')
-            ->get(['budget_indicators.department_code as code', 'departments.name']);
-        $statuses = DB::table('budget_indicators')->distinct()->orderBy('status')->pluck('status');
+            ->where('source', 'school_source')
+            ->whereNotNull('department_code')->where('department_code', '!=', '')
+            ->selectRaw('department_code as code, MAX(department_name) as name')
+            ->groupBy('department_code')->orderBy('department_code')->get();
+        $statuses = DB::table('budget_indicators')->where('source', 'school_source')
+            ->distinct()->orderBy('status')->pluck('status');
 
         return response()->json([
             'data' => $page->items(), 'current_page' => $page->currentPage(),
             'last_page' => $page->lastPage(), 'total' => $page->total(),
+            'source_total' => DB::table('budget_indicators')->where('source', 'school_source')->count(),
             'departments' => $departments, 'statuses' => $statuses,
         ]);
     }

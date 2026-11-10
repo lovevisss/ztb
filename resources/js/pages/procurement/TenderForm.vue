@@ -106,6 +106,7 @@ const pickerStatuses = ref<(string | null)[]>([]);
 const pickerPage = ref(1);
 const pickerLastPage = ref(1);
 const pickerTotal = ref(0);
+const pickerSourceTotal = ref(0);
 const pickerLoading = ref(false);
 const pickerError = ref('');
 async function searchIndicators(pageNumber = 1) {
@@ -118,19 +119,28 @@ async function searchIndicators(pageNumber = 1) {
     try {
         const response = await fetch(`/procurement/budgets?${params}`, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
         if (!response.ok) throw new Error('经费来源查询失败，请稍后重试。');
-        const result = await response.json() as { data: Indicator[]; current_page: number; last_page: number; total: number; departments: { code: string; name: string | null }[]; statuses: (string | null)[] };
+        const result = await response.json() as { data: Indicator[]; current_page: number; last_page: number; total: number; source_total: number; departments: { code: string; name: string | null }[]; statuses: (string | null)[] };
         pickerRows.value = result.data;
         pickerDepartments.value = result.departments;
         pickerStatuses.value = result.statuses;
         pickerPage.value = result.current_page;
         pickerLastPage.value = result.last_page;
         pickerTotal.value = result.total;
+        pickerSourceTotal.value = result.source_total;
     } catch (error) { pickerError.value = error instanceof Error ? error.message : '经费来源查询失败'; }
     finally { pickerLoading.value = false; }
 }
 function openIndicatorPicker(index: number) {
     pickerIndex.value = index;
     void searchIndicators();
+}
+function syncBudgetIndicators() {
+    router.post('/procurement/budgets/sync', {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            if (pickerIndex.value !== null) void searchIndicators();
+        },
+    });
 }
 function selectIndicator(indicator: Indicator) {
     if (indicator.status !== '1' || pickerIndex.value === null) return;
@@ -330,7 +340,7 @@ const importError = ref('');
         <section id="budget" class="panel">
             <h2 class="section-title">项目预算指标</h2>
             <p class="mb-4 text-sm">采购清单合计：¥{{ money(total) }}　预算指标使用金额合计：¥{{ money(allocated) }}</p>
-            <button v-if="canSyncBudgets" type="button" class="action mb-4" @click="router.post('/procurement/budgets/sync')">手动同步预算指标</button>
+            <button v-if="canSyncBudgets" type="button" class="action mb-4" @click="syncBudgetIndicators">手动同步预算指标</button>
             <button type="button" class="action mb-4 ml-3" @click="budgetForm.allocations.push({ budget_indicator_id: 0, amount: 0, code: null, name: '', director: null }); openIndicatorPicker(budgetForm.allocations.length - 1)">＋ 添加经费来源</button>
             <p class="error">{{ budgetForm.errors.allocations }}</p>
             <div v-for="(allocation, index) in budgetForm.allocations" :key="index" class="mb-4 grid items-end gap-3 rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] p-4 md:grid-cols-[1fr_11rem_auto]">
@@ -353,7 +363,8 @@ const importError = ref('');
                         <span class="font-medium">{{ indicator.code ?? '无代码' }} · {{ indicator.name }}</span>
                         <span class="ml-2 text-[var(--brand-muted)]">{{ indicator.director ?? '无负责人' }} · {{ indicator.department_name ?? indicator.department_code ?? '无部门' }} · {{ indicator.status === '1' ? '启用' : indicator.status === null ? '未标记' : `状态 ${indicator.status}` }}</span>
                     </button>
-                    <p v-if="!pickerLoading && pickerRows.length === 0" class="text-sm text-[var(--brand-muted)]">没有匹配的经费来源。</p>
+                    <p v-if="!pickerLoading && pickerRows.length === 0 && pickerSourceTotal === 0" class="text-sm text-[var(--brand-warning)]">经费代码尚未同步，请联系采购管理员执行同步。</p>
+                    <p v-else-if="!pickerLoading && pickerRows.length === 0" class="text-sm text-[var(--brand-muted)]">没有匹配的经费来源，请调整关键词或筛选条件。</p>
                 </div>
                 <div class="mt-3 flex items-center justify-end gap-3 text-sm"><button type="button" :disabled="pickerPage <= 1 || pickerLoading" @click="searchIndicators(pickerPage - 1)">上一页</button><span>{{ pickerPage }} / {{ pickerLastPage }}</span><button type="button" :disabled="pickerPage >= pickerLastPage || pickerLoading" @click="searchIndicators(pickerPage + 1)">下一页</button></div>
             </div>

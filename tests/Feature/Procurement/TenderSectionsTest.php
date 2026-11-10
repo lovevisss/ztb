@@ -66,24 +66,32 @@ class TenderSectionsTest extends TestCase
     {
         $user = $this->user();
         DB::table('departments')->where('id', $user->department_id)->update(['external_code' => 'IT']);
+        DB::table('budget_indicators')->insert([
+            'source_id' => 'old-1', 'code' => 'YS001', 'name' => '旧库项目',
+            'status' => '1', 'created_at' => now(), 'updated_at' => now(),
+        ]);
         foreach (range(1, 27) as $index) {
             DB::table('budget_indicators')->insert([
-                'source_id' => (string) $index,
+                'source_id' => 'school_source:YS'.str_pad((string) $index, 3, '0', STR_PAD_LEFT),
+                'source' => 'school_source',
                 'code' => 'YS'.str_pad((string) $index, 3, '0', STR_PAD_LEFT),
                 'name' => $index === 27 ? '实验室建设' : '教学经费'.$index,
                 'director' => '张老师', 'department_code' => $index === 27 ? 'OTHER' : 'IT',
+                'department_name' => $index === 27 ? '其他部门' : '源表信息部',
                 'status' => $index === 27 ? '0' : '1',
                 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
         $this->actingAs($user)->getJson(route('procurement.budgets.index'))
-            ->assertOk()->assertJsonPath('total', 27)->assertJsonPath('last_page', 2)->assertJsonCount(25, 'data');
+            ->assertOk()->assertJsonPath('total', 27)->assertJsonPath('source_total', 27)->assertJsonPath('last_page', 2)->assertJsonCount(25, 'data');
+        $this->actingAs($user)->getJson(route('procurement.budgets.index', ['q' => '旧库项目']))
+            ->assertOk()->assertJsonPath('total', 0);
         $this->actingAs($user)->getJson(route('procurement.budgets.index', ['q' => '实验室']))
             ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.status', '0');
         $this->actingAs($user)->getJson(route('procurement.budgets.index', ['q' => 'YS027']))
             ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.name', '实验室建设');
         $this->actingAs($user)->getJson(route('procurement.budgets.index', ['department' => 'IT', 'status' => '1']))
-            ->assertOk()->assertJsonPath('total', 26)->assertJsonPath('data.0.department_name', '信息中心');
+            ->assertOk()->assertJsonPath('total', 26)->assertJsonPath('data.0.department_name', '源表信息部');
         $this->actingAs($user)->getJson(route('procurement.budgets.index', ['department' => 'OTHER', 'status' => '0']))
             ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.department_code', 'OTHER');
     }
@@ -92,7 +100,8 @@ class TenderSectionsTest extends TestCase
     {
         $user = $this->user();
         $indicator = DB::table('budget_indicators')->insertGetId([
-            'source_id' => 'legacy', 'code' => 'YS001', 'name' => '旧经费', 'status' => '0',
+            'source_id' => 'school_source:YS001', 'source' => 'school_source',
+            'code' => 'YS001', 'name' => '旧经费', 'status' => '0',
             'created_at' => now(), 'updated_at' => now(),
         ]);
         $payload = ['section' => 'budget', 'allocations' => [['budget_indicator_id' => $indicator, 'amount' => 100000]]];
@@ -113,6 +122,22 @@ class TenderSectionsTest extends TestCase
         ]);
         $this->actingAs($user)->get(route('procurement.tenders.edit', $applicationId))
             ->assertInertia(fn ($page) => $page->where('allocations.0.name', '旧经费'));
+
+        $legacyId = DB::table('budget_indicators')->insertGetId([
+            'source_id' => 'legacy-2', 'code' => 'YS002', 'name' => '旧库经费', 'status' => '1',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->actingAs($user)->post(route('procurement.tenders.sections.update', $applicationId), [
+            'section' => 'budget', 'allocations' => [['budget_indicator_id' => $legacyId, 'amount' => 100000]],
+        ])->assertSessionHasErrors('allocations.0.budget_indicator_id');
+        DB::table('procurement_budget_allocations')->where('application_id', $applicationId)->update([
+            'budget_indicator_id' => $legacyId, 'code' => 'YS002', 'name' => '旧库经费',
+        ]);
+        $this->actingAs($user)->post(route('procurement.tenders.sections.update', $applicationId), [
+            'section' => 'budget', 'allocations' => [['budget_indicator_id' => $legacyId, 'amount' => 100000]],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($user)->get(route('procurement.tenders.edit', $applicationId))
+            ->assertInertia(fn ($page) => $page->where('allocations.0.name', '旧库经费'));
     }
 
     public function test_number_sequence_resets_on_next_day(): void
@@ -200,7 +225,7 @@ class TenderSectionsTest extends TestCase
         ])->assertRedirect();
         $this->actingAs($applicant)->post(route('procurement.tenders.sections.submit', $id))->assertSessionHasErrors('budget');
         $indicator = DB::table('budget_indicators')->insertGetId([
-            'source_id' => 'test', 'name' => '教学经费', 'status' => '1', 'created_at' => now(), 'updated_at' => now(),
+            'source_id' => 'school_source:test', 'source' => 'school_source', 'name' => '教学经费', 'status' => '1', 'created_at' => now(), 'updated_at' => now(),
         ]);
         $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
             'section' => 'budget', 'allocations' => [['budget_indicator_id' => $indicator, 'amount' => 100000]],
@@ -243,7 +268,7 @@ class TenderSectionsTest extends TestCase
         $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
             'section' => 'items', 'items' => [['name' => '设备', 'quantity' => 1, 'unit_price' => 100000]],
         ])->assertRedirect();
-        $indicator = DB::table('budget_indicators')->insertGetId(['source_id' => 'test', 'name' => '经费', 'status' => '1', 'created_at' => now(), 'updated_at' => now()]);
+        $indicator = DB::table('budget_indicators')->insertGetId(['source_id' => 'school_source:test', 'source' => 'school_source', 'name' => '经费', 'status' => '1', 'created_at' => now(), 'updated_at' => now()]);
         $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
             'section' => 'budget', 'allocations' => [['budget_indicator_id' => $indicator, 'amount' => 100000]],
         ])->assertRedirect();
@@ -293,7 +318,7 @@ class TenderSectionsTest extends TestCase
         $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
             'section' => 'engineering', 'category' => '工程类', 'project_name' => '教学楼装修', 'estimated_cost' => 100000,
         ])->assertRedirect();
-        $indicator = DB::table('budget_indicators')->insertGetId(['source_id' => 'engineering', 'name' => '工程经费', 'status' => '1', 'created_at' => now(), 'updated_at' => now()]);
+        $indicator = DB::table('budget_indicators')->insertGetId(['source_id' => 'school_source:engineering', 'source' => 'school_source', 'name' => '工程经费', 'status' => '1', 'created_at' => now(), 'updated_at' => now()]);
         $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
             'section' => 'budget', 'allocations' => [['budget_indicator_id' => $indicator, 'amount' => 100000]],
         ])->assertRedirect();

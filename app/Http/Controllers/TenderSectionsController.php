@@ -179,7 +179,11 @@ class TenderSectionsController extends Controller
     public function syncBudgets(Request $request): RedirectResponse
     {
         abort_unless($request->user()->hasAnyRole(['procurement_manager', 'system_admin']), 403);
-        Artisan::call('procurement:sync-budgets');
+        $exitCode = Artisan::call('procurement:sync-budgets');
+
+        if ($exitCode !== 0) {
+            return back()->withErrors(['budget_sync' => '经费代码同步失败，本地数据未更改。请检查应用日志。']);
+        }
 
         return back()->with('status', Artisan::output());
     }
@@ -233,9 +237,9 @@ class TenderSectionsController extends Controller
             $alreadySelected = $application !== null && DB::table('procurement_budget_allocations')
                 ->where('application_id', $application->id)
                 ->where('budget_indicator_id', $indicator->id)->exists();
-            if ($indicator->status !== '1' && ! $alreadySelected) {
+            if (($indicator->source !== 'school_source' || $indicator->status !== '1') && ! $alreadySelected) {
                 throw ValidationException::withMessages([
-                    "allocations.{$index}.budget_indicator_id" => '该经费来源未启用，不能新增选择。',
+                    "allocations.{$index}.budget_indicator_id" => '该经费来源不可新增选择，请选择启用的最新经费代码。',
                 ]);
             }
         }
