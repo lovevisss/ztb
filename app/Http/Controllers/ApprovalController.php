@@ -36,6 +36,7 @@ class ApprovalController extends Controller
         return Inertia::render('procurement/ApprovalDetail', [
             'application' => $application,
             'applicantName' => DB::table('users')->where('id', $application->applicant_id)->value('name'),
+            'applicantDepartmentName' => DB::table('departments')->where('id', $application->department_id)->value('name'),
             'sourceApplication' => $source === null ? null : [
                 'id' => $source->id,
                 'project_number' => $source->project_number,

@@ -11,6 +11,7 @@ type Application = {
     executor_id: number | null;
     title: string;
     project_number: string;
+    project_leader: string | null;
     budget_cents: number;
     purchase_type: string;
     application_form: string;
@@ -32,6 +33,7 @@ type Application = {
     special_purchase_reason: string | null;
     is_non_expenditure: boolean;
     remarks: string | null;
+    submitted_at: string | null;
 };
 type Step = {
     id: number;
@@ -58,6 +60,7 @@ type User = { id: number; name: string };
 const props = defineProps<{
     application: Application;
     applicantName: string | null;
+    applicantDepartmentName: string | null;
     sourceApplication: {
         id: number;
         project_number: string;
@@ -191,12 +194,43 @@ const flowRounds = computed(() => {
 const visibleAttachments = computed(() => props.attachments.filter((item) =>
     props.application.category === '工程类' || item.kind !== 'engineering_bill',
 ));
+const money = (cents: number | null | undefined) => cents == null ? '—' : `¥${(cents / 100).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const display = (value: string | null | undefined) => value?.trim() || '—';
+const basicFields = computed(() => [
+    ['项目编号', display(props.application.project_number)],
+    ['申报项目', display(props.application.title)],
+    ['项目经办人', display(props.applicantName)],
+    ['经办人电话', display(props.application.contact_phone)],
+    ['经办人所在部门', display(props.applicantDepartmentName)],
+    ['项目预算', money(props.application.budget_cents)],
+    ['归属', display(props.application.category)],
+    ...(props.application.organization_form?.trim() ? [['组织形式', props.application.organization_form]] : []),
+    ...(props.application.funding_source?.trim() ? [['经费列支', props.application.funding_source]] : []),
+    ...(props.application.responsible_department?.trim() ? [['归口部门', props.application.responsible_department]] : []),
+    ['拟采购方式', display(props.application.purchase_method)],
+    ['是否特殊采购', props.application.is_special_purchase ? '是' : '否'],
+    ['使用部门', display(props.usageDepartmentName)],
+    ['是否为非支出项目', props.application.is_non_expenditure ? '是' : '否'],
+    ...(props.application.project_leader?.trim() ? [['项目负责人', props.application.project_leader]] : []),
+    ['申报时间', props.application.submitted_at?.slice(0, 16).replace('T', ' ') || '—'],
+]);
+const longFields = computed(() => [
+    ['申请特殊采购方式理由', props.application.special_purchase_reason],
+    ['采购要求', props.application.procurement_requirements],
+    ['采购清单说明', props.application.purchase_list],
+    ['采购理由', props.application.reason],
+    ['技术参数', props.application.technical_parameters],
+    ['服务要求', props.application.service_requirements],
+    ['验收标准', props.application.acceptance_criteria],
+    ['预算测算说明', props.application.budget_basis_note],
+    ['备注', props.application.remarks],
+].filter((entry): entry is [string, string] => !!entry[1]?.trim()));
 </script>
 
 <template>
     <Head :title="application.title" />
     <main
-        class="mx-auto w-full max-w-6xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
+        class="procurement-detail-page w-full min-w-0 px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
     >
         <Link
             :href="currentUserId === application.applicant_id ? '/procurement/applications' : '/procurement/approvals'"
@@ -219,7 +253,7 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
                     class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
                 >
                     {{
-                        application.purchase_type === 'central_tender'
+                        application.application_form === 'central_tender'
                             ? '统一招标'
                             : '部门自行采购'
                     }}
@@ -261,168 +295,64 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
         </div>
 
         <div
-            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-32)] lg:grid-cols-[minmax(0,1fr)_340px]"
+            class="mt-[var(--brand-space-32)] space-y-[var(--brand-space-32)]"
         >
             <div class="space-y-[var(--brand-space-32)]">
-                <section
-                    class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm"
-                >
-                    <h2
-                        class="font-sans text-xl font-semibold text-[var(--brand-title)]"
-                    >
-                        申请内容
-                    </h2>
-                    <dl
-                        class="mt-[var(--brand-space-24)] grid gap-[var(--brand-space-16)] text-sm sm:grid-cols-2"
-                    >
-                        <div>
-                            <dt class="text-[var(--brand-muted)]">经费列支</dt>
-                            <dd
-                                class="mt-[var(--brand-space-8)] text-[var(--brand-title)]"
-                            >
-                                {{ application.funding_source }}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt class="text-[var(--brand-muted)]">归口部门</dt>
-                            <dd
-                                class="mt-[var(--brand-space-8)] text-[var(--brand-title)]"
-                            >
-                                {{ application.responsible_department }}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt class="text-[var(--brand-muted)]">组织形式</dt>
-                            <dd
-                                class="mt-[var(--brand-space-8)] text-[var(--brand-title)]"
-                            >
-                                {{ application.organization_form }}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt class="text-[var(--brand-muted)]">采购方式</dt>
-                            <dd
-                                class="mt-[var(--brand-space-8)] text-[var(--brand-title)]"
-                            >
-                                {{ application.purchase_method }}
-                            </dd>
-                        </div>
-                        <div v-if="application.reason" class="sm:col-span-2">
-                            <dt class="text-[var(--brand-muted)]">采购理由</dt>
-                            <dd
-                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
-                            >
-                                {{ application.reason }}
-                            </dd>
-                        </div>
-                        <div
-                            v-if="application.procurement_requirements"
-                            class="sm:col-span-2"
-                        >
-                            <dt class="text-[var(--brand-muted)]">采购需求</dt>
-                            <dd
-                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
-                            >
-                                {{ application.procurement_requirements }}
-                            </dd>
-                        </div>
-                        <div
-                            v-if="application.purchase_list"
-                            class="sm:col-span-2"
-                        >
-                            <dt class="text-[var(--brand-muted)]">采购清单</dt>
-                            <dd
-                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
-                            >
-                                {{ application.purchase_list }}
-                            </dd>
-                        </div>
-                        <div
-                            v-if="application.technical_parameters"
-                            class="sm:col-span-2"
-                        >
-                            <dt class="text-[var(--brand-muted)]">技术参数</dt>
-                            <dd
-                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
-                            >
-                                {{ application.technical_parameters }}
-                            </dd>
-                        </div>
-                        <div
-                            v-if="application.service_requirements"
-                            class="sm:col-span-2"
-                        >
-                            <dt class="text-[var(--brand-muted)]">服务要求</dt>
-                            <dd
-                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
-                            >
-                                {{ application.service_requirements }}
-                            </dd>
-                        </div>
-                        <div
-                            v-if="application.acceptance_criteria"
-                            class="sm:col-span-2"
-                        >
-                            <dt class="text-[var(--brand-muted)]">验收标准</dt>
-                            <dd
-                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
-                            >
-                                {{ application.acceptance_criteria }}
-                            </dd>
-                        </div>
-                        <div
-                            v-if="application.budget_basis_note"
-                            class="sm:col-span-2"
-                        >
-                            <dt class="text-[var(--brand-muted)]">预算测算</dt>
-                            <dd
-                                class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
-                            >
-                                {{ application.budget_basis_note }}
-                            </dd>
+                <section class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm">
+                    <h2 class="border-b border-[var(--brand-border)] pb-[var(--brand-space-16)] text-xl font-semibold text-[var(--brand-title)]">申请材料</h2>
+                    <ul v-if="visibleAttachments.length" class="mt-[var(--brand-space-16)] divide-y divide-[var(--brand-border)]">
+                        <li v-for="file in visibleAttachments" :key="file.id" class="flex flex-wrap items-center justify-between gap-[var(--brand-space-16)] py-[var(--brand-space-16)] text-sm">
+                            <span class="min-w-0 break-all text-[var(--brand-body)]"><span class="mr-3 text-[var(--brand-muted)]">{{ attachmentKindLabel[file.kind] ?? file.kind }}</span>{{ file.original_name }}</span>
+                            <a :href="`/procurement/attachments/${file.id}/download`" class="shrink-0 font-medium text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">下载</a>
+                        </li>
+                    </ul>
+                    <p v-else class="pt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]">暂无上传材料</p>
+                </section>
+
+                <section class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm">
+                    <h2 class="border-b border-[var(--brand-border)] pb-[var(--brand-space-16)] text-xl font-semibold text-[var(--brand-title)]">基本信息</h2>
+                    <dl class="mt-[var(--brand-space-16)] grid overflow-hidden rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] sm:grid-cols-2 xl:grid-cols-3">
+                        <div v-for="[label, value] in basicFields" :key="label" class="grid min-w-0 grid-cols-[minmax(100px,36%)_minmax(0,1fr)] border-b border-r border-[var(--brand-border)] text-sm last:border-b-0">
+                            <dt class="bg-[var(--brand-soft)] px-[var(--brand-space-16)] py-[var(--brand-space-16)] text-[var(--brand-muted)]">{{ label }}</dt>
+                            <dd class="min-w-0 break-words px-[var(--brand-space-16)] py-[var(--brand-space-16)] text-[var(--brand-title)]">{{ value }}</dd>
                         </div>
                     </dl>
-                    <div v-if="application.category || lineItems.length" class="mt-6 border-t border-[var(--brand-border)] pt-5 text-sm">
-                        <p>归属：{{ application.category }}　经办人电话：{{ application.contact_phone }}　使用部门：{{ usageDepartmentName ?? '无' }}</p>
-                        <p class="mt-2">特殊采购：{{ application.is_special_purchase ? '是' : '否' }}　非支出项目：{{ application.is_non_expenditure ? '是' : '否' }}</p>
-                        <p v-if="application.special_purchase_reason" class="mt-2 whitespace-pre-wrap">特殊采购方式理由：{{ application.special_purchase_reason }}</p>
-                        <p v-if="application.remarks" class="mt-2 whitespace-pre-wrap">备注：{{ application.remarks }}</p>
-                        <div v-if="application.category === '工程类' && engineering" class="mt-5 space-y-2">
-                            <h3 class="font-semibold">工程采购清单</h3>
-                            <p>工程名称：{{ engineering.project_name }}</p>
-                            <p class="whitespace-pre-wrap">项目建设内容：{{ engineering.construction_content }}</p>
-                            <p class="whitespace-pre-wrap">项目概况：{{ engineering.project_overview }}</p>
-                            <p class="whitespace-pre-wrap">项目工期要求：{{ engineering.schedule_requirements }}</p>
-                            <p>工程总造价：¥{{ ((engineering.estimated_cost_cents ?? 0) / 100).toFixed(2) }}</p>
+                    <dl v-if="longFields.length" class="mt-[var(--brand-space-16)] overflow-hidden rounded-[var(--brand-radius-md)] border border-[var(--brand-border)]">
+                        <div v-for="[label, value] in longFields" :key="label" class="grid border-b border-[var(--brand-border)] text-sm last:border-b-0 sm:grid-cols-[180px_minmax(0,1fr)]">
+                            <dt class="bg-[var(--brand-soft)] px-[var(--brand-space-16)] py-[var(--brand-space-16)] text-[var(--brand-muted)]">{{ label }}</dt>
+                            <dd class="min-w-0 whitespace-pre-wrap break-words px-[var(--brand-space-16)] py-[var(--brand-space-16)] leading-7 text-[var(--brand-body)]">{{ value }}</dd>
                         </div>
-                        <template v-else-if="application.category !== '工程类'">
-                            <h3 class="mt-5 font-semibold">采购清单</h3>
-                            <div class="mt-2 overflow-x-auto"><table class="w-full min-w-[680px] text-left"><thead><tr class="border-b border-[var(--brand-border)]"><th>名称</th><th>技术参数</th><th>数量</th><th>单价（元）</th><th>总价（元）</th><th>备注</th></tr></thead><tbody><tr v-for="item in lineItems" :key="item.id" class="border-b border-[var(--brand-border)]"><td>{{ item.name }}</td><td>{{ item.specification }}</td><td>{{ item.quantity }} {{ item.unit }}</td><td>{{ (item.unit_price_cents / 100).toFixed(2) }}</td><td>{{ (item.total_cents / 100).toFixed(2) }}</td><td>{{ item.remarks || '—' }}</td></tr></tbody></table></div>
-                        </template>
-                        <h3 class="mt-5 font-semibold">项目预算指标</h3>
-                        <ul class="mt-2 space-y-1"><li v-for="allocation in budgetAllocations" :key="allocation.id">{{ allocation.code }} · {{ allocation.name }} · {{ allocation.director }}：¥{{ (allocation.amount_cents / 100).toFixed(2) }}</li></ul>
+                    </dl>
+                </section>
+
+                <section class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm">
+                    <h2 class="border-b border-[var(--brand-border)] pb-[var(--brand-space-16)] text-xl font-semibold text-[var(--brand-title)]">采购清单</h2>
+                    <dl v-if="application.category === '工程类' && engineering" class="mt-[var(--brand-space-16)] overflow-hidden rounded-[var(--brand-radius-md)] border border-[var(--brand-border)]">
+                        <div v-for="[label, value] in [['工程名称', engineering.project_name], ['项目建设内容', engineering.construction_content], ['项目概况', engineering.project_overview], ['项目工期要求', engineering.schedule_requirements], ['工程总造价', money(engineering.estimated_cost_cents)]]" :key="label" class="grid border-b border-[var(--brand-border)] text-sm last:border-b-0 sm:grid-cols-[180px_minmax(0,1fr)]">
+                            <dt class="bg-[var(--brand-soft)] px-[var(--brand-space-16)] py-[var(--brand-space-16)] text-[var(--brand-muted)]">{{ label }}</dt>
+                            <dd class="whitespace-pre-wrap break-words px-[var(--brand-space-16)] py-[var(--brand-space-16)] leading-7 text-[var(--brand-title)]">{{ value || '—' }}</dd>
+                        </div>
+                    </dl>
+                    <div v-else-if="application.category !== '工程类'" class="mt-[var(--brand-space-16)] overflow-x-auto rounded-[var(--brand-radius-md)] border border-[var(--brand-border)]">
+                        <table class="w-full min-w-[900px] border-collapse text-left text-sm">
+                            <thead class="bg-[var(--brand-soft)] text-[var(--brand-body)]"><tr><th class="p-3">序号</th><th class="p-3">名称</th><th class="p-3">技术参数</th><th class="p-3">数量</th><th class="p-3">单位</th><th class="p-3">单价（元）</th><th class="p-3">总价（元）</th><th class="p-3">备注</th></tr></thead>
+                            <tbody class="divide-y divide-[var(--brand-border)] text-[var(--brand-body)]"><tr v-for="(item, index) in lineItems" :key="item.id" class="hover:bg-[var(--brand-primary-light)]"><td class="p-3">{{ index + 1 }}</td><td class="p-3">{{ item.name }}</td><td class="p-3 whitespace-pre-wrap">{{ item.specification || '—' }}</td><td class="p-3 tabular-nums">{{ item.quantity }}</td><td class="p-3">{{ item.unit || '—' }}</td><td class="p-3 whitespace-nowrap tabular-nums">{{ money(item.unit_price_cents) }}</td><td class="p-3 whitespace-nowrap tabular-nums">{{ money(item.total_cents) }}</td><td class="p-3">{{ item.remarks || '—' }}</td></tr></tbody>
+                            <tfoot class="border-t border-[var(--brand-border)] bg-[var(--brand-soft)] font-semibold text-[var(--brand-title)]"><tr><td colspan="6" class="p-3 text-right">合计</td><td class="whitespace-nowrap p-3 tabular-nums">{{ money(lineItems.reduce((sum, item) => sum + item.total_cents, 0)) }}</td><td></td></tr></tfoot>
+                        </table>
+                        <p v-if="!lineItems.length" class="p-4 text-sm text-[var(--brand-muted)]">暂无结构化采购清单</p>
                     </div>
-                    <div
-                        v-if="visibleAttachments.length"
-                        class="mt-[var(--brand-space-24)] border-t border-[var(--brand-border)] pt-[var(--brand-space-24)]"
-                    >
-                        <h3
-                            class="text-sm font-semibold text-[var(--brand-title)]"
-                        >
-                            申请附件
-                        </h3>
-                        <ul
-                            class="mt-[var(--brand-space-16)] space-y-[var(--brand-space-8)]"
-                        >
-                            <li v-for="file in visibleAttachments" :key="file.id" class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--brand-border)] py-2">
-                                <span class="text-xs text-[var(--brand-muted)]">{{ attachmentKindLabel[file.kind] ?? file.kind }} · {{ file.original_name }}</span>
-                                <a
-                                    :href="`/procurement/attachments/${file.id}/download`"
-                                    class="text-sm text-[var(--brand-primary)] hover:underline"
-                                    >下载</a
-                                >
-                            </li>
-                        </ul>
+                    <p v-else class="pt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]">暂无工程清单信息</p>
+                </section>
+
+                <section class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)] shadow-sm">
+                    <h2 class="border-b border-[var(--brand-border)] pb-[var(--brand-space-16)] text-xl font-semibold text-[var(--brand-title)]">项目预算指标</h2>
+                    <div class="mt-[var(--brand-space-16)] overflow-x-auto rounded-[var(--brand-radius-md)] border border-[var(--brand-border)]">
+                        <table class="w-full min-w-[640px] border-collapse text-left text-sm">
+                            <thead class="bg-[var(--brand-soft)] text-[var(--brand-body)]"><tr><th class="p-3">预算代码</th><th class="p-3">经费名称</th><th class="p-3">负责人</th><th class="p-3">使用金额（元）</th></tr></thead>
+                            <tbody class="divide-y divide-[var(--brand-border)] text-[var(--brand-body)]"><tr v-for="allocation in budgetAllocations" :key="allocation.id"><td class="p-3">{{ allocation.code || '—' }}</td><td class="p-3">{{ allocation.name }}</td><td class="p-3">{{ allocation.director || '—' }}</td><td class="whitespace-nowrap p-3 tabular-nums">{{ money(allocation.amount_cents) }}</td></tr></tbody>
+                            <tfoot v-if="budgetAllocations.length" class="border-t border-[var(--brand-border)] bg-[var(--brand-soft)] font-semibold text-[var(--brand-title)]"><tr><td colspan="3" class="p-3 text-right">合计</td><td class="whitespace-nowrap p-3 tabular-nums">{{ money(budgetAllocations.reduce((sum, allocation) => sum + allocation.amount_cents, 0)) }}</td></tr></tfoot>
+                        </table>
+                        <p v-if="!budgetAllocations.length" class="p-4 text-sm text-[var(--brand-muted)]">暂无预算指标记录</p>
                     </div>
                 </section>
 
@@ -471,7 +401,7 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
                 </section>
             </div>
 
-            <aside class="space-y-[var(--brand-space-24)]">
+            <aside class="grid items-start gap-[var(--brand-space-24)] lg:grid-cols-2 xl:grid-cols-3">
                 <section
                     v-if="
                         [

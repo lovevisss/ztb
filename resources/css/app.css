@@ -459,6 +459,9 @@
     margin-inline: auto;
     padding: var(--brand-space-32);
 }
+.admin-content > main.procurement-detail-page {
+    max-width: none;
+}
 .admin-content h1 {
     color: var(--brand-title);
     font-family: inherit;

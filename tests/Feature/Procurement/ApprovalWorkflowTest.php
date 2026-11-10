@@ -151,6 +151,7 @@ class ApprovalWorkflowTest extends TestCase
         $this->actingAs($applicant)->get(route('procurement.applications.show', $id))
             ->assertInertia(fn ($page) => $page->component('procurement/ApprovalDetail')
                 ->where('applicantName', $applicant->name)
+                ->where('applicantDepartmentName', '信息中心')
                 ->where('steps.0.status', 'returned')->where('steps.0.assignee_name', $head->name)
                 ->whereNot('steps.0.acted_at', null)->where('events.0.event', 'submitted')
                 ->where('events.1.actor_name', $head->name));

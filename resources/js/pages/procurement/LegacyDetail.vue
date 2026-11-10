@@ -72,6 +72,26 @@ function money(cents: number | null) {
         : `¥${(cents / 100).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}`;
 }
 const projectData = computed(() => parseDetails(props.project.details));
+const basicFields = computed(() => [
+    ['项目编号', props.project.number || '—'],
+    ['申报项目', props.project.title || '—'],
+    ['项目经办人', field(projectData.value, 'cgjbr') !== '—' ? field(projectData.value, 'cgjbr') : props.project.creator_name || '—'],
+    ['经办人电话', field(projectData.value, 'lxrdh')],
+    ['经办人所在部门', field(projectData.value, 'sbbm')],
+    ['项目预算', money(props.project.amount_cents)],
+    ['归属', field(projectData.value, 'xmlx')],
+    ['组织形式', field(projectData.value, 'zzxs')],
+    ['采购方式', field(projectData.value, 'cgfs')],
+    ['使用部门', field(projectData.value, 'sybm')],
+    ['申报时间', field(projectData.value, 'sbrq')],
+    ['项目负责人', field(projectData.value, 'xmfzr')],
+]);
+const longFields = computed(() => [
+    ['申购理由', field(projectData.value, 'sgly')],
+    ['采购要求', field(projectData.value, 'requirement') !== '—' ? field(projectData.value, 'requirement') : field(projectData.value, 'cgxq')],
+    ['特殊采购方式理由', field(projectData.value, 'selreason')],
+    ['备注', field(projectData.value, 'bz')],
+].filter((entry) => entry[1] !== '—'));
 const sections = computed(() =>
     visibleTables
         .filter((table) => table !== 'zcy_cgsq_qd')
@@ -86,6 +106,8 @@ const timeline = computed(() =>
 );
 const hasMissingHandlers = computed(() => props.workflowNodes.some((node) => node.personLabel === '处理人' && node.person === '原系统未记录'));
 const lineItems = computed(() => props.records.filter((row) => row.source_table === 'zcy_cgsq_qd'));
+const lineItemTotal = computed(() => lineItems.value.length && lineItems.value.every((row) => row.amount_cents !== null)
+    ? lineItems.value.reduce((sum, row) => sum + (row.amount_cents ?? 0), 0) : null);
 function itemField(row: RecordRow, keys: string[]) {
     const data = parseDetails(row.details);
     for (const key of keys) {
@@ -98,7 +120,7 @@ function itemField(row: RecordRow, keys: string[]) {
 <template>
     <Head title="旧采购项目档案" />
     <main
-        class="mx-auto max-w-6xl px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
+        class="procurement-detail-page w-full min-w-0 px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
     >
         <Link
             :href="backHref"
@@ -142,50 +164,40 @@ function itemField(row: RecordRow, keys: string[]) {
             <WorkflowDiagram title="原系统可用办理记录" :nodes="workflowNodes" />
         </div>
 
-        <div
-            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-16)] sm:grid-cols-2 lg:grid-cols-4"
+        <section
+            class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
         >
-            <div
-                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+            <h2
+                class="font-sans text-xl font-semibold text-[var(--brand-title)]"
             >
-                <p class="text-xs text-[var(--brand-muted)]">申请金额</p>
-                <p
-                    class="mt-[var(--brand-space-8)] text-xl font-semibold text-[var(--brand-title)] tabular-nums"
+                申请材料
+                <span
+                    class="ml-[var(--brand-space-8)] text-sm font-normal text-[var(--brand-muted)]"
+                    >{{ attachments.length }} 条</span
                 >
-                    {{ money(project.amount_cents) }}
-                </p>
-            </div>
-            <div
-                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+            </h2>
+            <p
+                class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-warning)]"
             >
-                <p class="text-xs text-[var(--brand-muted)]">原流程状态</p>
-                <p
-                    class="mt-[var(--brand-space-8)] text-lg font-medium text-[var(--brand-primary)]"
-                >
-                    {{ project.status || '—' }}
-                </p>
-            </div>
-            <div
-                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
+                文件待迁移，暂不提供下载。
+            </p>
+            <ul
+                v-if="attachments.length"
+                class="mt-[var(--brand-space-16)] divide-y divide-[var(--brand-border)] text-sm"
             >
-                <p class="text-xs text-[var(--brand-muted)]">申报部门</p>
-                <p
-                    class="mt-[var(--brand-space-8)] text-sm font-medium text-[var(--brand-title)]"
+                <li
+                    v-for="(file, index) in attachments"
+                    :key="index"
+                    class="flex justify-between gap-[var(--brand-space-16)] py-[var(--brand-space-8)]"
                 >
-                    {{ field(projectData, 'sbbm') }}
-                </p>
-            </div>
-            <div
-                class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
-            >
-                <p class="text-xs text-[var(--brand-muted)]">申报日期</p>
-                <p
-                    class="mt-[var(--brand-space-8)] text-lg font-medium text-[var(--brand-title)]"
-                >
-                    {{ field(projectData, 'sbrq').slice(0, 10) }}
-                </p>
-            </div>
-        </div>
+                    <span>{{ file.name || '未命名附件' }}</span
+                    ><span class="text-[var(--brand-muted)]">{{
+                        labels[file.owner_table] || file.owner_table
+                    }} · 文件待迁移</span>
+                </li>
+            </ul>
+            <p v-else class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]">原系统未导入附件记录</p>
+        </section>
 
         <section
             class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
@@ -193,32 +205,18 @@ function itemField(row: RecordRow, keys: string[]) {
             <h2
                 class="font-sans text-xl font-semibold text-[var(--brand-title)]"
             >
-                申请信息
+                基本信息
             </h2>
-            <dl
-                class="mt-[var(--brand-space-24)] grid gap-x-[var(--brand-space-32)] gap-y-[var(--brand-space-16)] text-sm md:grid-cols-2"
-            >
-                <div
-                    v-for="[label, key] in [
-                        ['申请人', 'create_name'],
-                        ['采购类型', 'xmlx'],
-                        ['组织形式', 'zzxs'],
-                        ['采购方式', 'cgfs'],
-                        ['经费来源', 'jfly'],
-                        ['申购理由', 'sgly'],
-                        ['项目负责人', 'xmfzr'],
-                        ['使用地点', 'sydd'],
-                    ]"
-                    :key="key"
-                >
-                    <dt class="text-xs text-[var(--brand-muted)]">
-                        {{ label }}
-                    </dt>
-                    <dd
-                        class="mt-[var(--brand-space-8)] whitespace-pre-wrap text-[var(--brand-title)]"
-                    >
-                        {{ field(projectData, key) }}
-                    </dd>
+            <dl class="mt-[var(--brand-space-16)] grid overflow-hidden rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] sm:grid-cols-2 xl:grid-cols-3">
+                <div v-for="[label, value] in basicFields" :key="label" class="grid min-w-0 grid-cols-[minmax(100px,36%)_minmax(0,1fr)] border-b border-r border-[var(--brand-border)] text-sm last:border-b-0">
+                    <dt class="bg-[var(--brand-soft)] px-[var(--brand-space-16)] py-[var(--brand-space-16)] text-[var(--brand-muted)]">{{ label }}</dt>
+                    <dd class="min-w-0 break-words px-[var(--brand-space-16)] py-[var(--brand-space-16)] text-[var(--brand-title)]">{{ value }}</dd>
+                </div>
+            </dl>
+            <dl v-if="longFields.length" class="mt-[var(--brand-space-16)] overflow-hidden rounded-[var(--brand-radius-md)] border border-[var(--brand-border)]">
+                <div v-for="[label, value] in longFields" :key="label" class="grid border-b border-[var(--brand-border)] text-sm last:border-b-0 sm:grid-cols-[180px_minmax(0,1fr)]">
+                    <dt class="bg-[var(--brand-soft)] px-[var(--brand-space-16)] py-[var(--brand-space-16)] text-[var(--brand-muted)]">{{ label }}</dt>
+                    <dd class="min-w-0 whitespace-pre-wrap break-words px-[var(--brand-space-16)] py-[var(--brand-space-16)] leading-7 text-[var(--brand-body)]">{{ value }}</dd>
                 </div>
             </dl>
             <details
@@ -246,14 +244,24 @@ function itemField(row: RecordRow, keys: string[]) {
         </section>
 
         <section class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]">
-            <h2 class="text-xl font-semibold text-[var(--brand-title)]">采购清单 <span class="text-sm font-normal text-[var(--brand-muted)]">{{ lineItems.length }} 项</span></h2>
-            <div class="mt-4 overflow-x-auto">
-                <table class="w-full min-w-[760px] text-left text-sm">
-                    <thead class="border-b border-[var(--brand-border)] bg-[var(--brand-soft)] text-[var(--brand-muted)]"><tr><th class="p-3">编号</th><th class="p-3">名称</th><th class="p-3">规格参数</th><th class="p-3">数量</th><th class="p-3">单位</th><th class="p-3">单价（元）</th><th class="p-3">金额</th><th class="p-3">备注</th></tr></thead>
-                    <tbody class="divide-y divide-[var(--brand-border)]"><tr v-for="row in lineItems" :key="row.source_id"><td class="p-3">{{ row.number || '—' }}</td><td class="p-3">{{ row.title || itemField(row, ['mc']) }}</td><td class="p-3">{{ itemField(row, ['ggxh', 'xhgg', 'jscc']) }}</td><td class="p-3">{{ itemField(row, ['sl', 'cgsl']) }}</td><td class="p-3">{{ itemField(row, ['dw']) }}</td><td class="p-3">{{ itemField(row, ['dj']) }}</td><td class="p-3">{{ money(row.amount_cents) }}</td><td class="p-3">{{ itemField(row, ['bz']) }}</td></tr></tbody>
+            <h2 class="border-b border-[var(--brand-border)] pb-[var(--brand-space-16)] text-xl font-semibold text-[var(--brand-title)]">采购清单 <span class="text-sm font-normal text-[var(--brand-muted)]">{{ lineItems.length }} 项</span></h2>
+            <div class="mt-[var(--brand-space-16)] overflow-x-auto rounded-[var(--brand-radius-md)] border border-[var(--brand-border)]">
+                <table class="w-full min-w-[900px] border-collapse text-left text-sm">
+                    <thead class="bg-[var(--brand-soft)] text-[var(--brand-body)]"><tr><th class="p-3">编号</th><th class="p-3">名称</th><th class="p-3">规格参数</th><th class="p-3">数量</th><th class="p-3">单位</th><th class="p-3">单价（元）</th><th class="p-3">金额</th><th class="p-3">备注</th></tr></thead>
+                    <tbody class="divide-y divide-[var(--brand-border)] text-[var(--brand-body)]"><tr v-for="row in lineItems" :key="row.source_id" class="hover:bg-[var(--brand-primary-light)]"><td class="p-3">{{ row.number || '—' }}</td><td class="p-3">{{ row.title || itemField(row, ['mc']) }}</td><td class="p-3">{{ itemField(row, ['ggxh', 'xhgg', 'jscc']) }}</td><td class="whitespace-nowrap p-3">{{ itemField(row, ['sl', 'cgsl']) }}</td><td class="p-3">{{ itemField(row, ['dw']) }}</td><td class="whitespace-nowrap p-3 tabular-nums">{{ itemField(row, ['dj']) }}</td><td class="whitespace-nowrap p-3 tabular-nums">{{ money(row.amount_cents) }}</td><td class="p-3">{{ itemField(row, ['bz']) }}</td></tr></tbody>
+                    <tfoot v-if="lineItemTotal !== null" class="border-t border-[var(--brand-border)] bg-[var(--brand-soft)] font-semibold text-[var(--brand-title)]"><tr><td colspan="6" class="p-3 text-right">合计</td><td class="whitespace-nowrap p-3 tabular-nums">{{ money(lineItemTotal) }}</td><td></td></tr></tfoot>
                 </table>
                 <p v-if="!lineItems.length" class="py-6 text-center text-sm text-[var(--brand-muted)]">原系统无采购清单记录</p>
             </div>
+        </section>
+
+        <section class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]">
+            <h2 class="border-b border-[var(--brand-border)] pb-[var(--brand-space-16)] text-xl font-semibold text-[var(--brand-title)]">项目预算指标</h2>
+            <dl class="mt-[var(--brand-space-16)] grid overflow-hidden rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] sm:grid-cols-2">
+                <div class="grid grid-cols-[140px_minmax(0,1fr)] border-b border-r border-[var(--brand-border)] text-sm"><dt class="bg-[var(--brand-soft)] p-4 text-[var(--brand-muted)]">原系统经费来源</dt><dd class="break-words p-4 text-[var(--brand-title)]">{{ field(projectData, 'jfly') }}</dd></div>
+                <div class="grid grid-cols-[140px_minmax(0,1fr)] border-b border-[var(--brand-border)] text-sm"><dt class="bg-[var(--brand-soft)] p-4 text-[var(--brand-muted)]">申请金额</dt><dd class="p-4 text-[var(--brand-title)] tabular-nums">{{ money(project.amount_cents) }}</dd></div>
+            </dl>
+            <p class="mt-[var(--brand-space-16)] text-xs text-[var(--brand-muted)]">原系统未导入结构化预算指标，以上仅展示已保存的经费来源与申请金额。</p>
         </section>
 
         <section
@@ -344,38 +352,5 @@ function itemField(row: RecordRow, keys: string[]) {
             </ol>
         </section>
 
-        <section
-            class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
-        >
-            <h2
-                class="font-sans text-xl font-semibold text-[var(--brand-title)]"
-            >
-                附件索引
-                <span
-                    class="ml-[var(--brand-space-8)] text-sm font-normal text-[var(--brand-muted)]"
-                    >{{ attachments.length }} 条</span
-                >
-            </h2>
-            <p
-                class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-warning)]"
-            >
-                文件待迁移，暂不提供下载。
-            </p>
-            <ul
-                v-if="attachments.length"
-                class="mt-[var(--brand-space-16)] divide-y divide-[var(--brand-border)] text-sm"
-            >
-                <li
-                    v-for="(file, index) in attachments"
-                    :key="index"
-                    class="flex justify-between gap-[var(--brand-space-16)] py-[var(--brand-space-8)]"
-                >
-                    <span>{{ file.name || '未命名附件' }}</span
-                    ><span class="text-[var(--brand-muted)]">{{
-                        labels[file.owner_table] || file.owner_table
-                    }} · 文件待迁移</span>
-                </li>
-            </ul>
-        </section>
     </main>
 </template>
