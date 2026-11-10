@@ -35,6 +35,21 @@
     --brand-icon-size: 18px;
 }
 
+/* The business shell uses the blue system; public and account pages retain their theme. */
+.admin-app:not(.account-settings) {
+    --brand-primary: #165dff;
+    --brand-primary-hover: #0e4bd4;
+    --brand-primary-light: #eaf1ff;
+    --brand-page: #fff;
+    --brand-soft: #f5f7fa;
+    --brand-sidebar: #f7f9fc;
+    --brand-sidebar-active: #eaf1ff;
+    --brand-border: #e3e9f2;
+    --brand-danger: #f53f3f;
+    --brand-shadow: 0 10px 28px rgba(24, 64, 126, 0.06);
+    --brand-sidebar-width: 256px;
+}
+
 .dark {
     --brand-primary: #a78bfa;
     --brand-primary-hover: #bea9ff;
@@ -54,6 +69,25 @@
     --brand-muted: #ada7c3;
     --brand-border: #3a3550;
     --brand-shadow: 0 16px 40px rgba(4, 3, 16, 0.28);
+}
+
+.dark .admin-app:not(.account-settings) {
+    --brand-primary: #78a8ff;
+    --brand-primary-hover: #a2c3ff;
+    --brand-primary-light: #1c355e;
+    --brand-on-primary: #101c32;
+    --brand-page: #121a2a;
+    --brand-soft: #1d2a3e;
+    --brand-card: #1b2638;
+    --brand-sidebar: #172235;
+    --brand-sidebar-active: #1c355e;
+    --brand-sidebar-text: #d8e3f5;
+    --brand-title: #f4f7ff;
+    --brand-body: #d4deed;
+    --brand-muted: #a8b8ce;
+    --brand-border: #33445d;
+    --brand-danger: #ff8a8a;
+    --brand-shadow: 0 14px 34px rgba(3, 11, 25, 0.28);
 }
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -303,6 +337,15 @@
     border-radius: var(--brand-radius-md);
     min-height: 40px;
     font-weight: 500;
+    gap: 12px;
+    height: auto;
+    padding-block: 10px;
+}
+.admin-app [data-slot='sidebar'] [data-sidebar='menu-button'] span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .admin-app [data-slot='sidebar'] [data-sidebar='menu-button']:hover,
 .admin-app
