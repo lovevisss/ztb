@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\LegacyApprovalTimeline;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -45,7 +46,7 @@ class LegacyProcurementController extends Controller
         ]);
     }
 
-    public function show(Request $request, string $sourceId): Response
+    public function show(Request $request, string $sourceId, LegacyApprovalTimeline $timeline): Response
     {
         $project = DB::table('legacy_procurement_records')->where('source_table', 'zcy_cgsq')
             ->where('source_id', $sourceId)->first();
@@ -55,11 +56,15 @@ class LegacyProcurementController extends Controller
             || $project->user_id === $user->id
             || ($user->department_id !== null && $project->department_id === $user->department_id), 403);
 
+        $records = DB::table('legacy_procurement_records')->where('application_source_id', $sourceId)
+            ->where('source_table', '!=', 'zcy_cgsq')
+            ->orderBy('occurred_at')->orderBy('source_id')
+            ->get(['source_table', 'source_id', 'number', 'title', 'status', 'amount_cents', 'occurred_at', 'details']);
+
         return Inertia::render('procurement/LegacyDetail', [
             'project' => $project,
-            'records' => DB::table('legacy_procurement_records')->where('application_source_id', $sourceId)
-                ->where('source_table', '!=', 'zcy_cgsq')
-                ->orderBy('occurred_at')->get(['source_table', 'source_id', 'number', 'title', 'status', 'amount_cents', 'occurred_at', 'details']),
+            'records' => $records,
+            'workflowNodes' => $timeline->nodes($project, $records),
             'attachments' => DB::table('legacy_procurement_attachments')->where('application_source_id', $sourceId)
                 ->get(['owner_table', 'owner_source_id', 'name', 'migration_status']),
         ]);

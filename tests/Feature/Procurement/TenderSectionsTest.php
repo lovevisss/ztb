@@ -210,6 +210,20 @@ class TenderSectionsTest extends TestCase
         $this->assertCount(3, $steps);
         $this->assertSame($usageHead->id, $steps[0]->assignee_id);
         $this->assertSame($applicantHead->id, $steps[1]->assignee_id);
+
+        $this->actingAs($usageHead)->post(route('procurement.approvals.decide', $steps[0]->id), [
+            'action' => 'return', 'opinion' => '请修改清单',
+        ])->assertRedirect();
+        $this->actingAs($applicant)->get(route('procurement.tenders.edit', $id))->assertSuccessful();
+        $this->actingAs($manager)->get(route('procurement.tenders.edit', $id))->assertForbidden();
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $id), [
+            'section' => 'items', 'items' => [['name' => '修改后的设备', 'quantity' => 1, 'unit_price' => 100000]],
+        ])->assertRedirect();
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.submit', $id))
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('approval_steps', ['id' => $steps[0]->id, 'attempt' => 1, 'status' => 'returned', 'opinion' => '请修改清单']);
+        $this->assertDatabaseHas('approval_steps', ['application_id' => $id, 'attempt' => 2, 'position' => 1, 'assignee_id' => $usageHead->id]);
+        $this->assertDatabaseHas('procurement_line_items', ['application_id' => $id, 'name' => '修改后的设备']);
     }
 
     public function test_usage_department_without_head_blocks_submission(): void

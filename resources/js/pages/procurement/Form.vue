@@ -4,6 +4,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 
 type Application = {
     id: number;
+    status: string;
     title: string | null;
     budget_cents: number | null;
     funding_source: string | null;
@@ -91,6 +92,10 @@ function save(intent: 'draft' | 'submit') {
             >
                 草稿可以稍后完善；提交时需填写全部申请信息。
             </p>
+        </div>
+
+        <div v-if="application?.status === 'returned'" class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]">
+            此申请已退回。修改内容后可保存草稿，确认完成后点击“提交审核”，系统将开启新一轮审批。
         </div>
 
         <div

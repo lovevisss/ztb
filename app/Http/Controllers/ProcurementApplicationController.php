@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ProcurementApplication;
 use App\Models\ProcurementClassificationRule;
 use App\Services\ApprovalWorkflow;
+use App\Services\LegacyApprovalTimeline;
 use App\Services\MyProcurementApplications;
 use App\Services\ProcurementSpreadsheet;
 use Illuminate\Http\RedirectResponse;
@@ -17,7 +18,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProcurementApplicationController extends Controller
 {
-    public function index(Request $request, MyProcurementApplications $listing): Response
+    public function index(Request $request, MyProcurementApplications $listing, LegacyApprovalTimeline $timeline): Response
     {
         $account = $request->user()->school_account;
         if ($request->filled('legacy')) {
@@ -29,13 +30,16 @@ class ProcurementApplicationController extends Controller
                 ->first();
             abort_if($project === null, 404);
 
+            $records = DB::table('legacy_procurement_records')
+                ->where('application_source_id', $sourceId)
+                ->where('source_table', '!=', 'zcy_cgsq')
+                ->orderBy('occurred_at')->orderBy('source_id')
+                ->get(['source_table', 'source_id', 'number', 'title', 'status', 'amount_cents', 'occurred_at', 'details']);
+
             return Inertia::render('procurement/LegacyDetail', [
                 'project' => $project,
-                'records' => DB::table('legacy_procurement_records')
-                    ->where('application_source_id', $sourceId)
-                    ->where('source_table', '!=', 'zcy_cgsq')
-                    ->orderBy('occurred_at')
-                    ->get(['source_table', 'source_id', 'number', 'title', 'status', 'amount_cents', 'occurred_at', 'details']),
+                'records' => $records,
+                'workflowNodes' => $timeline->nodes($project, $records),
                 'attachments' => DB::table('legacy_procurement_attachments')
                     ->where('application_source_id', $sourceId)
                     ->get(['owner_table', 'owner_source_id', 'name', 'migration_status']),

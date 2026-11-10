@@ -122,8 +122,11 @@ class ApprovalWorkflowTest extends TestCase
         $this->assertDatabaseHas('procurement_applications', ['id' => $id, 'status' => 'returned']);
         $this->actingAs($applicant)->get(route('procurement.applications.show', $id))
             ->assertInertia(fn ($page) => $page->component('procurement/ApprovalDetail')
+                ->where('applicantName', $applicant->name)
                 ->where('steps.0.status', 'returned')->where('steps.0.assignee_name', $head->name)
-                ->whereNot('steps.0.acted_at', null)->where('events.0.event', 'submitted'));
+                ->whereNot('steps.0.acted_at', null)->where('events.0.event', 'submitted')
+                ->where('events.1.actor_name', $head->name));
+        $this->actingAs($applicant)->get(route('procurement.applications.edit', $id))->assertSuccessful();
 
         $this->actingAs($applicant)->put(route('procurement.applications.update', $id), [
             'intent' => 'submit', 'title' => '补充后的项目', 'budget' => 90000,
@@ -138,6 +141,22 @@ class ApprovalWorkflowTest extends TestCase
         $this->actingAs($applicant)->get(route('procurement.applications.show', $id))
             ->assertInertia(fn ($page) => $page->has('steps', 4)->where('steps.2.attempt', 2)
                 ->where('events.2.event', 'resubmitted'));
+
+        $secondStep = DB::table('approval_steps')->where('application_id', $id)->where('attempt', 2)->where('position', 1)->value('id');
+        $this->actingAs($head)->post(route('procurement.approvals.decide', $secondStep), [
+            'action' => 'return', 'opinion' => '请再次补充',
+        ])->assertRedirect();
+        $this->actingAs($head)->get(route('procurement.applications.edit', $id))->assertForbidden();
+        $this->actingAs($applicant)->put(route('procurement.applications.update', $id), [
+            'intent' => 'submit', 'title' => '再次补充后的项目', 'budget' => 90000,
+            'funding_source' => '教学经费', 'organization_form' => '部门自行组织',
+            'purchase_method' => '询价', 'reason' => '再次补充采购说明',
+            'responsible_department' => '教务处', 'is_fixed_asset' => false,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('approval_steps', ['id' => $secondStep, 'attempt' => 2, 'status' => 'returned', 'opinion' => '请再次补充']);
+        $this->actingAs($applicant)->get(route('procurement.applications.show', $id))
+            ->assertInertia(fn ($page) => $page->has('steps', 6)->where('steps.4.attempt', 3)
+                ->where('events.4.event', 'resubmitted'));
     }
 
     public function test_rejection_terminates_current_application_and_requires_new_one(): void

@@ -35,6 +35,7 @@ class ApprovalController extends Controller
 
         return Inertia::render('procurement/ApprovalDetail', [
             'application' => $application,
+            'applicantName' => DB::table('users')->where('id', $application->applicant_id)->value('name'),
             'sourceApplication' => $source === null ? null : [
                 'id' => $source->id,
                 'project_number' => $source->project_number,
@@ -45,7 +46,9 @@ class ApprovalController extends Controller
                 ->where('approval_steps.application_id', $application->id)
                 ->orderBy('approval_steps.attempt')->orderBy('approval_steps.position')
                 ->get(['approval_steps.*', 'users.name as assignee_name']),
-            'events' => DB::table('approval_events')->where('application_id', $application->id)->orderBy('id')->get(),
+            'events' => DB::table('approval_events')->leftJoin('users', 'users.id', '=', 'approval_events.actor_id')
+                ->where('approval_events.application_id', $application->id)->orderBy('approval_events.id')
+                ->get(['approval_events.*', 'users.name as actor_name']),
             'attachments' => DB::table('procurement_attachments')->where('application_id', $application->id)->get(['id', 'kind', 'original_name']),
             'lineItems' => DB::table('procurement_line_items')->where('application_id', $application->id)->orderBy('position')->get(),
             'engineering' => DB::table('procurement_engineering_details')->where('application_id', $application->id)->first(),

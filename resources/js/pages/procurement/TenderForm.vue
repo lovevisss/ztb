@@ -6,7 +6,7 @@ type Item = { name: string; specification: string; quantity: number; unit_price:
 type SavedItem = { name: string; specification: string | null; quantity: number; unit_price_cents: number; unit: string | null; remarks: string | null };
 type Indicator = { id: number; code: string | null; name: string; director: string | null; department_code: string | null; department_name: string | null; status: string | null; available_cents: number | null };
 type CatalogItem = { id: number; name: string; specification: string | null; unit: string | null; unit_price_cents: number; remarks: string | null };
-type Application = { id: number; project_number: string | null; title: string | null; category: string | null; contact_phone: string | null; purchase_method: string | null; is_special_purchase: boolean; special_purchase_reason: string | null; is_non_expenditure: boolean; has_usage_department: boolean; usage_department_id: number | null; procurement_requirements: string | null; remarks: string | null; budget_basis_note: string | null; budget_cents: number | null };
+type Application = { id: number; status: string; project_number: string | null; title: string | null; category: string | null; contact_phone: string | null; purchase_method: string | null; is_special_purchase: boolean; special_purchase_reason: string | null; is_non_expenditure: boolean; has_usage_department: boolean; usage_department_id: number | null; procurement_requirements: string | null; remarks: string | null; budget_basis_note: string | null; budget_cents: number | null };
 type Attachment = { id: number; original_name: string; size: number };
 type Allocation = { budget_indicator_id: number; amount_cents: number; code: string | null; name: string; director: string | null };
 type Engineering = { project_name: string | null; construction_content: string | null; project_overview: string | null; schedule_requirements: string | null; estimated_cost_cents: number | null };
@@ -214,6 +214,7 @@ const importError = ref('');
             <h1 class="text-[28px] font-semibold text-[var(--brand-title)]">采购申请单</h1>
             <p class="mt-2 text-sm text-[var(--brand-muted)]">{{ application?.project_number ?? '首次保存后自动生成项目编号' }}</p>
         </header>
+        <div v-if="application?.status === 'returned'" class="mb-5 rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-4 text-sm text-[var(--brand-warning)]">此申请已退回。请分别保存修改过的页签，再点击底部“提交审核”，系统将开启新一轮审批。</div>
         <div v-if="!departmentAssigned" class="mb-5 rounded border border-[var(--brand-warning)] p-4 text-[var(--brand-warning)]">当前账号尚未关联部门，请联系管理员。</div>
         <nav class="mb-6 flex flex-wrap border-b border-[var(--brand-border)]" aria-label="申请内容">
             <button v-for="entry in tabs" :key="entry.key" type="button" :aria-current="tab === entry.key ? 'page' : undefined" class="px-5 py-3 text-sm" :class="tab === entry.key ? 'border-b-2 border-[var(--brand-primary)] font-semibold text-[var(--brand-primary)]' : 'text-[var(--brand-muted)]'" @click="tab = entry.key">{{ entry.label }}</button>

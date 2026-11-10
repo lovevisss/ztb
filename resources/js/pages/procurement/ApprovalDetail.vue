@@ -3,7 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import WorkflowDiagram from './WorkflowDiagram.vue';
 
-type FlowNode = { key: string; label: string; state: 'done' | 'active' | 'waiting' | 'stopped'; time?: string | null; person?: string | null; note?: string | null };
+type FlowNode = { key: string; label: string; state: 'done' | 'active' | 'waiting' | 'stopped'; time?: string | null; timeLabel?: string | null; person?: string | null; personLabel?: string | null; result?: string | null; note?: string | null };
 
 type Application = {
     id: number;
@@ -49,6 +49,7 @@ type Event = {
     event: string;
     details: string | null;
     created_at: string;
+    actor_name: string | null;
 };
 type Attachment = { id: number; kind: string; original_name: string };
 type Engineering = { project_name: string | null; construction_content: string | null; project_overview: string | null; schedule_requirements: string | null; estimated_cost_cents: number | null };
@@ -56,6 +57,7 @@ type User = { id: number; name: string };
 
 const props = defineProps<{
     application: Application;
+    applicantName: string | null;
     sourceApplication: {
         id: number;
         project_number: string;
@@ -144,11 +146,21 @@ const statusLabel: Record<string, string> = {
     rejected: '已驳回',
     cancelled: '已取消',
 };
+const eventLabel: Record<string, string> = {
+    submitted: '提交申请', resubmitted: '重新提交', approved: '审批通过',
+    returned: '退回修改', rejected: '驳回申请', reassigned: '调整审批人',
+};
+const editHref = computed(() => props.application.status === 'returned' && props.application.applicant_id === props.currentUserId
+    ? props.application.application_form === 'central_tender'
+        ? `/procurement/tenders/${props.application.id}/edit`
+        : `/procurement/applications/${props.application.id}/edit`
+    : null);
+const latestReturn = computed(() => [...props.steps].reverse().find((step) => step.status === 'returned') ?? null);
 const flowRounds = computed(() => {
     const attempts = [...new Set(props.steps.map((step) => step.attempt))];
     const submissions = props.events.filter((event) => ['submitted', 'resubmitted'].includes(event.event));
     if (!attempts.length) {
-        return [{ attempt: 0, nodes: [{ key: 'draft', label: '待提交', state: 'active' as const, time: null }] }];
+        return [{ attempt: 0, nodes: [{ key: 'draft', label: '待提交', state: 'active' as const, time: null, result: '尚未提交' }] }];
     }
     return attempts.map((attempt, index) => {
         const steps = props.steps.filter((step) => step.attempt === attempt);
@@ -157,18 +169,21 @@ const flowRounds = computed(() => {
         const complete = steps.length > 0 && steps.every((step) => step.status === 'approved');
         const nodes: FlowNode[] = [{
             key: `submit-${attempt}`, label: index ? '重新提交' : '提交', state: 'done',
-            time: submissions[index]?.created_at ?? null,
+            time: submissions[index]?.created_at ?? null, timeLabel: '提交时间',
+            person: props.applicantName ?? '未指定', personLabel: '申请人', result: '已提交',
         }];
         for (const step of steps) nodes.push({
             key: String(step.id), label: roleLabel[step.role_code] ?? step.role_code,
-            state: step.status === 'approved' ? 'done' : step.status === 'pending' ? 'active' : ['returned', 'rejected', 'cancelled'].includes(step.status) ? 'stopped' : 'waiting',
-            time: step.acted_at, person: step.assignee_name,
-            note: step.opinion ? `${statusLabel[step.status] ?? step.status}：${step.opinion}` : null,
+            state: step.status === 'approved' ? 'done' : step.status === 'pending' ? 'active' : ['returned', 'rejected'].includes(step.status) ? 'stopped' : 'waiting',
+            time: step.acted_at, timeLabel: '处理时间', person: step.assignee_name ?? '未指定', personLabel: '审批人',
+            result: step.status === 'cancelled' ? '未进入（流程终止）' : statusLabel[step.status] ?? step.status,
+            note: step.opinion,
         });
         nodes.push({
             key: `end-${attempt}`, label: terminal ? statusLabel[terminal.status] ?? terminal.status : '完成',
             state: terminal ? 'stopped' : complete ? 'done' : 'waiting',
             time: terminal?.acted_at ?? (complete ? last?.acted_at : null),
+            timeLabel: '结束时间',
         });
         return { attempt, nodes };
     });
@@ -216,6 +231,14 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
                 ¥{{ (application.budget_cents / 100).toLocaleString('zh-CN') }}
             </p>
         </header>
+
+        <section v-if="editHref" class="mt-[var(--brand-space-24)] flex flex-wrap items-center justify-between gap-[var(--brand-space-16)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-24)]">
+            <div>
+                <h2 class="text-lg font-semibold text-[var(--brand-title)]">申请已退回，等待修改后重新提交</h2>
+                <p class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-body)]">退回审批人：{{ latestReturn?.assignee_name || '未指定' }}<span v-if="latestReturn?.opinion"> · 意见：{{ latestReturn.opinion }}</span></p>
+            </div>
+            <Link :href="editHref" class="inline-flex min-h-10 items-center rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] text-sm font-semibold text-[var(--brand-on-primary)] hover:bg-[var(--brand-primary-hover)]">修改申请</Link>
+        </section>
 
         <div
             v-if="sourceApplication"
@@ -670,40 +693,6 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
                     </div>
                 </section>
                 <section
-                    v-if="
-                        application.status === 'returned' &&
-                        application.applicant_id === currentUserId &&
-                        application.application_form === 'self_purchase'
-                    "
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-24)]"
-                >
-                    <p class="text-sm text-[var(--brand-warning)]">
-                        申请已退回，请修改后重新提交。
-                    </p>
-                    <Link
-                        :href="`/procurement/applications/${application.id}/edit`"
-                        class="mt-[var(--brand-space-16)] inline-block text-sm font-semibold text-[var(--brand-warning)] underline"
-                        >编辑申请</Link
-                    >
-                </section>
-                <section
-                    v-if="
-                        application.status === 'returned' &&
-                        application.applicant_id === currentUserId &&
-                        application.application_form === 'central_tender'
-                    "
-                    class="rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-24)]"
-                >
-                    <p class="text-sm text-[var(--brand-warning)]">
-                        申请已退回，请修改后重新提交。
-                    </p>
-                    <Link
-                        :href="`/procurement/tenders/${application.id}/edit`"
-                        class="mt-[var(--brand-space-16)] inline-block text-sm font-semibold text-[var(--brand-warning)] underline"
-                        >编辑申请</Link
-                    >
-                </section>
-                <section
                     v-if="events.length"
                     class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]"
                 >
@@ -713,8 +702,11 @@ const visibleAttachments = computed(() => props.attachments.filter((item) =>
                     <ul
                         class="mt-[var(--brand-space-16)] space-y-[var(--brand-space-16)] text-xs text-[var(--brand-muted)]"
                     >
-                        <li v-for="event in events" :key="event.id">
-                            {{ event.event }} · {{ event.details || '无备注' }}
+                        <li v-for="event in events" :key="event.id" class="border-b border-[var(--brand-border)] pb-[var(--brand-space-8)] last:border-0">
+                            <span class="font-medium text-[var(--brand-title)]">{{ eventLabel[event.event] ?? event.event }}</span>
+                            · {{ event.actor_name || '人员未记录' }}
+                            · {{ event.created_at.slice(0, 16).replace('T', ' ') }}
+                            <p v-if="event.details" class="mt-[var(--brand-space-8)] text-[var(--brand-body)]">{{ event.details }}</p>
                         </li>
                     </ul>
                 </section>

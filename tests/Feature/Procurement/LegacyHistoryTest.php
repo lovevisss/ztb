@@ -87,6 +87,75 @@ class LegacyHistoryTest extends TestCase
                 ->missing('attachments.0.legacy_path'));
     }
 
+    public function test_legacy_detail_keeps_repeated_decisions_in_order_and_labels_missing_approvers(): void
+    {
+        $owner = User::factory()->create(['school_account' => 'LEGACY-TALK']);
+        $start = now()->startOfMinute();
+        DB::table('legacy_procurement_records')->insert([
+            'source_table' => 'zcy_cgsq', 'source_id' => 'talk', 'application_source_id' => 'talk',
+            'creator_account' => $owner->school_account, 'creator_name' => $owner->name, 'user_id' => $owner->id,
+            'title' => '辅导员谈心谈话', 'details' => json_encode(['sbrq' => $start->toDateTimeString()]),
+            'occurred_at' => $start, 'created_at' => $start, 'updated_at' => $start,
+        ]);
+        foreach ([
+            ['1', '使用部门领导审批', '许乐', '不通过'],
+            ['2', '申请人重新提交', null, '已提交'],
+            ['3', '使用部门领导审批', '许乐', '退回修改'],
+            ['4', '申请人重新提交', $owner->name, '已提交'],
+            ['5', '使用部门领导审批', '许乐', '通过'],
+        ] as [$sourceId, $label, $handler, $status]) {
+            $occurredAt = $start->copy()->addMinutes((int) $sourceId);
+            DB::table('legacy_procurement_records')->insert([
+                'source_table' => 'zcy_progress_history', 'source_id' => $sourceId,
+                'application_source_id' => 'talk', 'creator_account' => $owner->school_account,
+                'title' => $label, 'status' => $status,
+                'details' => json_encode(['lcsm' => $label, 'zxr' => $handler], JSON_UNESCAPED_UNICODE),
+                'occurred_at' => $occurredAt, 'created_at' => $start, 'updated_at' => $start,
+            ]);
+        }
+
+        foreach ([route('procurement.applications.index', ['legacy' => 'talk']), route('procurement.legacy-history.show', 'talk')] as $url) {
+            $this->actingAs($owner)->get($url)->assertSuccessful()
+                ->assertInertia(fn ($page) => $page->component('procurement/LegacyDetail')
+                    ->has('workflowNodes', 6)
+                    ->where('workflowNodes.0.person', $owner->name)
+                    ->where('workflowNodes.1.personLabel', '处理人')
+                    ->where('workflowNodes.1.person', '许乐')
+                    ->where('workflowNodes.1.result', '不通过')
+                    ->where('workflowNodes.1.state', 'stopped')
+                    ->where('workflowNodes.2.person', '原系统未记录')
+                    ->where('workflowNodes.3.result', '退回修改')
+                    ->where('workflowNodes.5.result', '通过'));
+        }
+    }
+
+    public function test_sparse_legacy_history_keeps_raw_status_and_chronological_position(): void
+    {
+        $owner = User::factory()->create(['school_account' => 'LEGACY-SPARSE']);
+        $submittedAt = now()->startOfMinute();
+        DB::table('legacy_procurement_records')->insert([
+            'source_table' => 'zcy_cgsq', 'source_id' => 'sparse', 'application_source_id' => 'sparse',
+            'creator_account' => $owner->school_account, 'creator_name' => $owner->name,
+            'title' => '辅导员谈心谈话', 'details' => json_encode(['sbrq' => $submittedAt->toDateTimeString()]),
+            'occurred_at' => $submittedAt, 'created_at' => $submittedAt, 'updated_at' => $submittedAt,
+        ]);
+        DB::table('legacy_procurement_records')->insert([
+            'source_table' => 'zcy_progress_history', 'source_id' => 'earlier',
+            'application_source_id' => 'sparse', 'creator_account' => $owner->school_account,
+            'status' => '1', 'details' => json_encode(['zxr' => null, 'lcsm' => null, 'lctype' => 'down']),
+            'occurred_at' => $submittedAt->copy()->subDay(), 'created_at' => $submittedAt, 'updated_at' => $submittedAt,
+        ]);
+
+        $this->actingAs($owner)->get(route('procurement.applications.index', ['legacy' => 'sparse']))
+            ->assertInertia(fn ($page) => $page->component('procurement/LegacyDetail')
+                ->where('workflowNodes.0.label', '办理记录')
+                ->where('workflowNodes.0.person', '原系统未记录')
+                ->where('workflowNodes.0.result', '原系统状态码 1')
+                ->where('workflowNodes.0.state', 'recorded')
+                ->where('workflowNodes.1.label', '提交')
+                ->where('workflowNodes.1.person', $owner->name));
+    }
+
     public function test_history_is_read_only_and_scoped_to_the_user_department(): void
     {
         $now = now();

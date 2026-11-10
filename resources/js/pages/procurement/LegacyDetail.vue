@@ -19,6 +19,11 @@ type Attachment = {
     name: string | null;
     migration_status: string;
 };
+type FlowNode = {
+    key: string; label: string; state: 'done' | 'waiting' | 'stopped' | 'recorded';
+    time: string | null; timeLabel: string | null; person: string | null;
+    personLabel: string | null; result: string | null; note: string | null;
+};
 const props = withDefaults(
     defineProps<{
         project: RecordRow & {
@@ -27,6 +32,7 @@ const props = withDefaults(
         };
         records: RecordRow[];
         attachments: Attachment[];
+        workflowNodes: FlowNode[];
         backHref?: string;
     }>(),
     { backHref: '/procurement/legacy-history' },
@@ -78,6 +84,7 @@ const sections = computed(() =>
 const timeline = computed(() =>
     props.records.filter((row) => row.source_table === 'zcy_progress_history'),
 );
+const hasMissingHandlers = computed(() => props.workflowNodes.some((node) => node.personLabel === '处理人' && node.person === '原系统未记录'));
 const lineItems = computed(() => props.records.filter((row) => row.source_table === 'zcy_cgsq_qd'));
 function itemField(row: RecordRow, keys: string[]) {
     const data = parseDetails(row.details);
@@ -86,21 +93,6 @@ function itemField(row: RecordRow, keys: string[]) {
     }
     return '—';
 }
-const flowNodes = computed(() => {
-    const nodes: { key: string; label: string; state: 'done' | 'waiting'; time: string | null; person?: string | null; note?: string | null }[] = [];
-    const submitted = projectData.value.sbrq;
-    if (submitted) nodes.push({ key: 'submit', label: '提交', state: 'done', time: String(submitted), person: props.project.creator_name });
-    for (const row of timeline.value) {
-        const data = parseDetails(row.details);
-        nodes.push({
-            key: row.source_id, label: field(data, 'lcsm') === '—' ? row.title || '办理节点' : field(data, 'lcsm'),
-            state: 'done', time: row.occurred_at, person: data.zxr ? String(data.zxr) : null,
-            note: row.status,
-        });
-    }
-    if (!nodes.length) nodes.push({ key: 'none', label: '暂无办理记录', state: 'waiting', time: null });
-    return nodes;
-});
 </script>
 
 <template>
@@ -144,7 +136,10 @@ const flowNodes = computed(() => {
         </header>
 
         <div class="mt-[var(--brand-space-24)]">
-            <WorkflowDiagram title="原系统办理流程" :nodes="flowNodes" />
+            <div v-if="hasMissingHandlers" class="mb-[var(--brand-space-16)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]">
+                部分原系统办理记录没有保存处理人或节点说明，以下仅展示已导入的记录，不代表完整审批轨迹。
+            </div>
+            <WorkflowDiagram title="原系统可用办理记录" :nodes="workflowNodes" />
         </div>
 
         <div
@@ -341,9 +336,10 @@ const flowNodes = computed(() => {
                     <p
                         class="mt-[var(--brand-space-8)] text-xs text-[var(--brand-muted)]"
                     >
-                        {{ row.occurred_at?.slice(0, 16) || '—' }} ·
-                        {{ field(parseDetails(row.details), 'zxr') }}
+                        处理人：{{ field(parseDetails(row.details), 'zxr') === '—' ? '原系统未记录' : field(parseDetails(row.details), 'zxr') }}
+                        · 处理时间：{{ row.occurred_at?.slice(0, 16) || '原系统未记录' }}
                     </p>
+                    <p class="mt-[var(--brand-space-8)] text-xs text-[var(--brand-body)]">结果：{{ row.status || '原系统未记录' }}</p>
                 </li>
             </ol>
         </section>
