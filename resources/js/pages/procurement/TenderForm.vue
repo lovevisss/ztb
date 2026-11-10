@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 
 type Item = { name: string; specification: string; quantity: number; unit_price: number; unit: string; remarks: string };
@@ -30,12 +30,39 @@ const props = defineProps<{
 const page = usePage();
 
 type Tab = 'basic' | 'items' | 'budget' | 'attachments';
-const initialTab = typeof window === 'undefined' ? 'basic' : new URLSearchParams(window.location.search).get('tab');
+const initialTab = typeof window === 'undefined' ? 'basic' : (window.location.hash.slice(1) || new URLSearchParams(window.location.search).get('tab'));
 const tab = ref<Tab>(['basic', 'items', 'budget', 'attachments'].includes(initialTab ?? '') ? initialTab as Tab : 'basic');
 const tabs: { key: Tab; label: string }[] = [
     { key: 'basic', label: '基本信息' }, { key: 'items', label: '采购清单' },
     { key: 'budget', label: '项目预算指标' }, { key: 'attachments', label: '附件' },
 ];
+function scrollToSection(section: Tab, behavior: ScrollBehavior = 'smooth') {
+    tab.value = section;
+    document.getElementById(section)?.scrollIntoView({ behavior, block: 'start' });
+    window.history.replaceState(window.history.state, '', `#${section}`);
+}
+function updateActiveSection() {
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 8) {
+        tab.value = 'attachments';
+        return;
+    }
+    for (const entry of [...tabs].reverse()) {
+        const section = document.getElementById(entry.key);
+        if (section && section.getBoundingClientRect().top <= 160) {
+            tab.value = entry.key;
+            return;
+        }
+    }
+    tab.value = 'basic';
+}
+onMounted(async () => {
+    await nextTick();
+    if (initialTab && initialTab !== 'basic' && tabs.some((entry) => entry.key === initialTab)) {
+        scrollToSection(initialTab as Tab, 'auto');
+    } else updateActiveSection();
+    window.addEventListener('scroll', updateActiveSection, { passive: true });
+});
+onBeforeUnmount(() => window.removeEventListener('scroll', updateActiveSection));
 const basic = useForm({
     section: 'basic', title: props.application?.title ?? '', category: props.application?.category ?? '',
     contact_phone: props.application ? (props.application.contact_phone ?? '') : (props.applicantPhone ?? ''), purchase_method: props.application?.purchase_method ?? '公开招标',
@@ -133,7 +160,7 @@ function save(section: Tab | 'engineering') {
     else form.post('/procurement/tenders/sections', options);
 }
 function submit() {
-    if (!props.application) { save(tab.value === 'items' && basic.category === '工程类' ? 'engineering' : tab.value); return; }
+    if (!props.application) return;
     router.post(`/procurement/tenders/${props.application.id}/submit`, {}, { preserveScroll: true });
 }
 function addFromCatalog() {
@@ -208,18 +235,17 @@ const importError = ref('');
 
 <template>
     <Head title="统一招标申请填报" />
-    <main class="mx-auto w-full max-w-7xl px-5 py-8 md:px-8">
-        <Link href="/procurement/applications" class="text-sm text-[var(--brand-primary)] hover:underline">← 返回申请列表</Link>
-        <header class="my-8 text-center">
+    <main class="tender-form-page w-full min-w-0 px-4 py-6 md:px-8 md:py-8">
+        <header class="mb-6 border-b border-[var(--brand-border)] pb-5">
             <h1 class="text-[28px] font-semibold text-[var(--brand-title)]">采购申请单</h1>
-            <p class="mt-2 text-sm text-[var(--brand-muted)]">{{ application?.project_number ?? '首次保存后自动生成项目编号' }}</p>
+            <p class="mt-2 text-sm text-[var(--brand-muted)]">{{ application?.project_number ?? '首次保存任一模块后自动生成项目编号' }}</p>
         </header>
         <div v-if="application?.status === 'returned'" class="mb-5 rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-4 text-sm text-[var(--brand-warning)]">此申请已退回。请分别保存修改过的页签，再点击底部“提交审核”，系统将开启新一轮审批。</div>
         <div v-if="!departmentAssigned" class="mb-5 rounded border border-[var(--brand-warning)] p-4 text-[var(--brand-warning)]">当前账号尚未关联部门，请联系管理员。</div>
-        <nav class="mb-6 flex flex-wrap border-b border-[var(--brand-border)]" aria-label="申请内容">
-            <button v-for="entry in tabs" :key="entry.key" type="button" :aria-current="tab === entry.key ? 'page' : undefined" class="px-5 py-3 text-sm" :class="tab === entry.key ? 'border-b-2 border-[var(--brand-primary)] font-semibold text-[var(--brand-primary)]' : 'text-[var(--brand-muted)]'" @click="tab = entry.key">{{ entry.label }}</button>
+        <nav class="section-nav mb-6 flex gap-2 overflow-x-auto border-b border-[var(--brand-border)] bg-[var(--brand-card)]" aria-label="申请内容定位">
+            <a v-for="entry in tabs" :key="entry.key" :href="`#${entry.key}`" :aria-current="tab === entry.key ? 'location' : undefined" class="shrink-0 border-b-2 px-4 py-3 text-sm" :class="tab === entry.key ? 'border-[var(--brand-primary)] font-semibold text-[var(--brand-primary)]' : 'border-transparent text-[var(--brand-muted)] hover:text-[var(--brand-primary)]'" @click.prevent="scrollToSection(entry.key)">{{ entry.label }}</a>
         </nav>
-        <section v-show="tab === 'basic'" class="panel">
+        <section id="basic" class="panel">
             <h2 class="section-title">基本信息 <span class="text-xs font-normal">（*号为必填内容）</span></h2>
             <div class="grid gap-5 sm:grid-cols-2">
                 <label><span class="label">项目编号</span><input class="field bg-[var(--brand-soft)]" :value="application?.project_number ?? '保存后自动生成'" disabled /></label>
@@ -240,7 +266,7 @@ const importError = ref('');
             </div>
             <button type="button" class="save" :disabled="basic.processing || !departmentAssigned" @click="save('basic')">保存基本信息</button>
         </section>
-        <section v-show="tab === 'items' && basic.category === '工程类'" class="panel">
+        <section v-if="basic.category === '工程类'" id="items" class="panel">
             <h2 class="section-title">采购清单 · 工程类</h2>
             <div class="space-y-5">
                 <label class="block"><span class="label">*工程名称</span><input v-model="engineeringForm.project_name" class="field" /><small class="error">{{ engineeringForm.errors.project_name }}</small></label>
@@ -252,7 +278,7 @@ const importError = ref('');
             </div>
             <button type="button" class="save" :disabled="engineeringForm.processing || !departmentAssigned" @click="save('engineering')">保存工程清单</button>
         </section>
-        <section v-show="tab === 'items' && basic.category !== '工程类'" class="panel">
+        <section v-else id="items" class="panel">
             <h2 class="section-title">采购清单</h2>
             <div class="mb-4 flex flex-wrap items-center gap-3 text-sm">
                 <button type="button" class="action" @click="itemForm.items.push(blankItem())">＋ 添加采购清单</button>
@@ -286,7 +312,7 @@ const importError = ref('');
                 <ul class="mt-4 space-y-2 text-sm"><li v-for="item in catalog" :key="item.id" class="flex justify-between border-b border-[var(--brand-border)] py-2"><span>{{ item.name }} · {{ item.specification }} · ¥{{ money(item.unit_price_cents / 100) }}</span><span class="flex gap-3"><button type="button" class="text-[var(--brand-primary)]" @click="editCatalog(item)">编辑</button><button type="button" class="text-[var(--brand-danger)]" @click="removeCatalog(item.id)">删除</button></span></li></ul>
             </div>
         </section>
-        <section v-show="tab === 'budget'" class="panel">
+        <section id="budget" class="panel">
             <h2 class="section-title">项目预算指标</h2>
             <p class="mb-4 text-sm">采购清单合计：¥{{ money(total) }}　预算指标使用金额合计：¥{{ money(allocated) }}</p>
             <button v-if="canSyncBudgets" type="button" class="action mb-4" @click="router.post('/procurement/budgets/sync')">手动同步预算指标</button>
@@ -319,7 +345,7 @@ const importError = ref('');
             <label><span class="label">预算测算说明</span><textarea v-model="budgetForm.budget_basis_note" class="field min-h-24" /></label>
             <button type="button" class="save" :disabled="budgetForm.processing || !departmentAssigned" @click="save('budget')">保存预算指标</button>
         </section>
-        <section v-show="tab === 'attachments'" class="panel">
+        <section id="attachments" class="panel">
             <h2 class="section-title">附件</h2>
             <p class="mb-4 text-sm text-[var(--brand-muted)]">按需上传论证资料、办公会纪要、党政联席会议单等。支持 PDF、Word、Excel 和图片，单个文件不超过 20 MB。</p>
             <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" @change="chooseFiles" />
@@ -328,12 +354,18 @@ const importError = ref('');
             <button type="button" class="save" :disabled="attachmentForm.processing || !departmentAssigned" @click="save('attachments')">保存附件</button>
         </section>
         <div v-if="Object.keys(page.props.errors ?? {}).length" class="mt-6 rounded border border-[var(--brand-danger)] p-4 text-sm text-[var(--brand-danger)]"><p v-for="(message, key) in page.props.errors" :key="key">{{ message }}</p></div>
-        <div class="mt-8 flex flex-wrap items-center justify-center gap-4"><button type="button" class="save mt-0" :disabled="!departmentAssigned" @click="submit">提交审核</button><Link href="/procurement/applications" class="action">关闭</Link><span v-if="total < threshold" class="text-xs text-[var(--brand-warning)]">统一招标金额门槛：¥{{ money(threshold) }}</span></div>
+        <footer class="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-4 shadow-[var(--brand-shadow)] md:p-6">
+            <div class="text-sm text-[var(--brand-muted)]"><p v-if="!application">请先保存任一模块，生成申请草稿后再提交审核。</p><p v-else>各模块分别保存；确认内容完整后提交审核。</p><p v-if="total < threshold" class="mt-1 text-xs text-[var(--brand-warning)]">统一招标金额门槛：¥{{ money(threshold) }}</p></div>
+            <div class="flex flex-wrap items-center gap-3"><Link href="/procurement/applications" class="action">返回申请列表</Link><button type="button" class="save mt-0" :disabled="!departmentAssigned || !application" @click="submit">提交审核</button></div>
+        </footer>
     </main>
 </template>
 
 <style scoped>
-.panel { border: 1px solid var(--brand-border); background: var(--brand-card); padding: 1.5rem; border-radius: var(--brand-radius-lg); box-shadow: var(--brand-shadow); }
+.tender-form-page { max-width: none; }
+.section-nav { position: sticky; top: 0; z-index: 10; }
+.panel { min-width: 0; margin-bottom: 1.5rem; scroll-margin-top: 5.5rem; border: 1px solid var(--brand-border); background: var(--brand-card); padding: 1.5rem; border-radius: var(--brand-radius-lg); box-shadow: var(--brand-shadow); }
+.panel :deep(input), .panel :deep(textarea), .panel :deep(select) { max-width: 100%; }
 .section-title { border-bottom: 1px solid var(--brand-border); padding-bottom: 1rem; margin-bottom: 1.5rem; color: var(--brand-title); font-size: 1.25rem; font-weight: 600; line-height: 1.35; }
 .label { display: block; font-size: .8rem; color: var(--brand-body); margin-bottom: .4rem; }
 .field { width: 100%; min-height: 2.5rem; border: 1px solid var(--brand-border); border-radius: 10px; padding: .5rem .75rem; background-color: var(--brand-card); color: var(--brand-body); }
@@ -345,4 +377,6 @@ const importError = ref('');
 .save:disabled { opacity: .5; }
 .action { display: inline-flex; align-items: center; justify-content: center; min-height: 2.5rem; border: 1px solid var(--brand-border); border-radius: var(--brand-radius-md); padding: .45rem .85rem; color: var(--brand-primary); background: var(--brand-card); font-size: .875rem; }
 .action:hover { background: var(--brand-primary-light); }
+.section-nav a:focus-visible, .save:focus-visible, .action:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+@media (max-width: 640px) { .panel { padding: 1rem; } }
 </style>
