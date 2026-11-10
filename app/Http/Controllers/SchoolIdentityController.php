@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\ManualRoleAssignments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,8 +27,26 @@ class SchoolIdentityController extends Controller
             ->orderBy('users.name')
             ->paginate(30, ['users.id', 'users.name', 'users.email', 'users.school_account', 'users.is_active', 'departments.name as department_name'])
             ->withQueryString();
+        $userIds = $users->getCollection()->pluck('id');
+        $assignments = DB::table('role_user')->join('roles', 'roles.id', '=', 'role_user.role_id')
+            ->whereIn('role_user.user_id', $userIds)
+            ->get(['role_user.user_id', 'role_user.source', 'roles.code'])->groupBy('user_id');
+        $users->getCollection()->each(function ($user) use ($assignments): void {
+            $roles = $assignments->get($user->id, collect());
+            $user->manual_role_codes = $roles->where('source', 'manual')->pluck('code')->values()->all();
+            $user->school_role_codes = $roles->where('source', 'school')->pluck('code')->values()->all();
+        });
+        $events = DB::table('manual_role_events')->leftJoin('users as actors', 'actors.id', '=', 'manual_role_events.actor_id')
+            ->whereIn('manual_role_events.user_id', $userIds)
+            ->orderByDesc('manual_role_events.id')->limit(100)
+            ->get(['manual_role_events.user_id', 'manual_role_events.role_code', 'manual_role_events.action',
+                'manual_role_events.channel', 'manual_role_events.created_at', 'actors.name as actor_name']);
 
-        return Inertia::render('admin/SchoolIdentities', ['users' => $users, 'filters' => $filters]);
+        return Inertia::render('admin/SchoolIdentities', [
+            'users' => $users, 'filters' => $filters,
+            'roles' => DB::table('roles')->orderBy('id')->get(['code', 'name']),
+            'roleEvents' => $events,
+        ]);
     }
 
     public function update(Request $request, User $user): RedirectResponse
@@ -52,5 +71,17 @@ class SchoolIdentityController extends Controller
         });
 
         return to_route('school-identities.index');
+    }
+
+    public function updateRoles(Request $request, User $user, ManualRoleAssignments $assignments): RedirectResponse
+    {
+        abort_unless($request->user()->hasAnyRole(['system_admin']), 403);
+        $data = $request->validate([
+            'manual_role_codes' => ['present', 'array'],
+            'manual_role_codes.*' => ['string', 'distinct', Rule::exists('roles', 'code')],
+        ]);
+        $assignments->replace($user, $data['manual_role_codes'], $request->user());
+
+        return back()->with('status', '手动角色已更新。');
     }
 }

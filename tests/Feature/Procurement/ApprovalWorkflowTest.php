@@ -3,6 +3,9 @@
 namespace Tests\Feature\Procurement;
 
 use App\Models\User;
+use App\Models\ProcurementApplication;
+use App\Services\ApprovalWorkflow;
+use App\Services\ManualRoleAssignments;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -63,6 +66,31 @@ class ApprovalWorkflowTest extends TestCase
         $this->actingAs($manager)->post(route('procurement.approvals.decide', $steps[1]->id), ['action' => 'approve'])->assertRedirect();
         $this->assertDatabaseHas('procurement_applications', ['id' => $id, 'status' => 'approved']);
         $this->assertDatabaseHas('approval_steps', ['id' => $steps[1]->id, 'status' => 'approved']);
+    }
+
+    public function test_named_school_accounts_resolve_to_department_head_and_manager(): void
+    {
+        $department = $this->department('信息技术部、实验室建设管理办公室');
+        $applicant = User::factory()->create(['department_id' => $department, 'school_account' => '20150301']);
+        $head = User::factory()->create(['department_id' => $department, 'school_account' => '20040093']);
+        $roles = app(ManualRoleAssignments::class);
+        $roles->replace($applicant, ['system_admin', 'procurement_manager'], null, 'console');
+        $roles->replace($head, ['department_head'], $applicant);
+
+        $application = ProcurementApplication::create([
+            'applicant_id' => $applicant->id, 'department_id' => $department,
+            'purchase_type' => 'central_tender', 'application_form' => 'central_tender',
+            'status' => 'draft', 'title' => '教学设备采购', 'budget_cents' => 23000000,
+            'has_usage_department' => false,
+        ]);
+        app(ApprovalWorkflow::class)->start($application);
+
+        $steps = DB::table('approval_steps')->where('application_id', $application->id)->orderBy('position')->get();
+        $this->assertCount(2, $steps);
+        $this->assertSame('department_head', $steps[0]->role_code);
+        $this->assertSame($head->id, $steps[0]->assignee_id);
+        $this->assertSame('procurement_manager', $steps[1]->role_code);
+        $this->assertSame($applicant->id, $steps[1]->assignee_id);
     }
 
     public function test_inactive_school_person_is_not_selected_as_an_approver(): void
