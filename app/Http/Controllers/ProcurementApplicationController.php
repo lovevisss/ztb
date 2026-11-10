@@ -61,6 +61,8 @@ class ProcurementApplicationController extends Controller
                 'draft' => $records->where('tab', 'draft')->count(),
                 'submitted' => $records->where('tab', 'submitted')->count(),
             ],
+            'years' => $records->pluck('year')->filter(fn ($year) => $year !== null)
+                ->unique()->sortDesc()->values(),
             'filters' => $filters,
         ]);
     }
@@ -70,12 +72,13 @@ class ProcurementApplicationController extends Controller
         $filters = $this->listFilters($request);
         $records = $listing->filter($listing->records($request->user()), $filters);
         $path = $spreadsheet->writeTable(
-            ['项目编号', '项目名称', '申报部门', '申请金额（元）', '提交日期', '申请人', '申请人电话', '流程状态', '来源'],
+            ['项目编号', '项目名称', '申报部门', '申请金额（元）', '提交日期', '申请人', '申请人电话', '流程状态', '来源', '所属年度', '常规项目'],
             $records->map(fn (array $item) => [
                 $item['number'], $item['title'], $item['department_name'],
                 $item['amount_cents'] === null ? null : $item['amount_cents'] / 100,
                 $item['submitted_at'] === null ? null : substr((string) $item['submitted_at'], 0, 10),
                 $item['applicant_name'], $item['contact_phone'], $item['status'], $item['source'],
+                $item['year'], $item['is_regular'] ? '是（匹配'.implode('、', $item['matching_years']).'年）' : '否',
             ]),
             '我的采购申请',
         );
@@ -95,6 +98,8 @@ class ProcurementApplicationController extends Controller
             'department_name' => ['nullable', 'string', 'max:100'],
             'applicant_name' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', 'string', 'max:100'],
+            'year' => ['nullable', 'integer', 'between:1900,2100'],
+            'regular' => ['nullable', 'in:all,regular,other'],
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
     }
