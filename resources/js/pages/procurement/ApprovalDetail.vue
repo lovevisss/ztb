@@ -617,10 +617,19 @@ const longFields = computed(() => [
                             <p class="text-[var(--brand-muted)]">当前审批人：{{ step.assignee_name || '未指定' }}</p>
                         </div>
                         <label :for="`assignee-${step.id}`" class="mt-[var(--brand-space-16)] block text-sm text-[var(--brand-body)]">选择审批人</label>
-                        <select :id="`assignee-${step.id}`" v-model.number="selectedAssignees[step.id]" class="mt-[var(--brand-space-8)] min-h-10 w-full rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] px-[var(--brand-space-16)] text-sm text-[var(--brand-title)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]" @change="delete reassignmentErrors[step.id]">
-                            <option v-if="!users.some((user) => user.id === step.assignee_id)" :value="step.assignee_id">{{ step.assignee_name || '当前审批人' }}（不可重新选择）</option>
-                            <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
-                        </select>
+                        <el-select
+                            :id="`assignee-${step.id}`"
+                            v-model="selectedAssignees[step.id]"
+                            filterable
+                            placeholder="输入姓名搜索审批人"
+                            no-match-text="没有匹配的审批人"
+                            no-data-text="暂无可选审批人"
+                            class="mt-[var(--brand-space-8)] w-full"
+                            @change="delete reassignmentErrors[step.id]"
+                        >
+                            <el-option v-if="!users.some((user) => user.id === step.assignee_id)" :label="`${step.assignee_name || '当前审批人'}（不可重新选择）`" :value="step.assignee_id" disabled />
+                            <el-option v-for="user in users" :key="user.id" :label="user.name" :value="user.id" />
+                        </el-select>
                         <p v-if="selectedAssignees[step.id] !== step.assignee_id" class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-body)]">将调整为：{{ users.find((user) => user.id === selectedAssignees[step.id])?.name || '请选择审批人' }}</p>
                         <p v-if="reassignmentErrors[step.id]" class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-danger)]">{{ reassignmentErrors[step.id] }}</p>
                         <button type="button" class="mt-[var(--brand-space-16)] min-h-10 rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] text-sm font-semibold text-[var(--brand-on-primary)] hover:bg-[var(--brand-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)] disabled:opacity-50" :disabled="reassigning[step.id] || selectedAssignees[step.id] === step.assignee_id || !users.some((user) => user.id === selectedAssignees[step.id])" @click="reassign(step.id)">{{ reassigning[step.id] ? '更新中…' : '更新此节点' }}</button>
