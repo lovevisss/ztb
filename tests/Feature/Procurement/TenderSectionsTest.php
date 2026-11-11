@@ -25,6 +25,58 @@ class TenderSectionsTest extends TestCase
         return $user;
     }
 
+    public function test_attachment_save_adds_files_and_deletes_only_own_ordinary_attachments(): void
+    {
+        Storage::fake('local');
+        $applicant = $this->user();
+        $outsider = $this->user('教务处');
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.create'), [
+            'section' => 'attachments', 'files' => [UploadedFile::fake()->create('旧附件.pdf', 8, 'application/pdf')],
+        ])->assertRedirect();
+        $applicationId = DB::table('procurement_applications')->value('id');
+        $oldFile = DB::table('procurement_attachments')->first();
+
+        $this->actingAs($outsider)->post(route('procurement.tenders.sections.update', $applicationId), [
+            'section' => 'attachments', 'delete_ids' => [$oldFile->id],
+        ])->assertForbidden();
+        Storage::disk('local')->assertExists($oldFile->path);
+
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $applicationId), [
+            'section' => 'attachments', 'delete_ids' => [$oldFile->id],
+            'files' => [UploadedFile::fake()->create('新附件.pdf', 8, 'application/pdf')],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('procurement_attachments', ['id' => $oldFile->id]);
+        Storage::disk('local')->assertMissing($oldFile->path);
+        $newFile = DB::table('procurement_attachments')->where('application_id', $applicationId)->first();
+        $this->assertSame('新附件.pdf', $newFile->original_name);
+        Storage::disk('local')->assertExists($newFile->path);
+
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.create'), [
+            'section' => 'attachments', 'files' => [UploadedFile::fake()->create('其他项目.pdf', 8, 'application/pdf')],
+        ])->assertRedirect();
+        $otherFile = DB::table('procurement_attachments')->where('application_id', '!=', $applicationId)->first();
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $applicationId), [
+            'section' => 'attachments', 'delete_ids' => [$otherFile->id],
+        ])->assertSessionHasErrors('delete_ids.0');
+        Storage::disk('local')->assertExists($otherFile->path);
+
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $applicationId), [
+            'section' => 'engineering', 'category' => '工程类',
+            'bill_file' => UploadedFile::fake()->create('工程清单.pdf', 8, 'application/pdf'),
+        ])->assertRedirect();
+        $bill = DB::table('procurement_attachments')->where('application_id', $applicationId)->where('kind', 'engineering_bill')->first();
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $applicationId), [
+            'section' => 'attachments', 'delete_ids' => [$bill->id],
+        ])->assertSessionHasErrors('delete_ids.0');
+        Storage::disk('local')->assertExists($bill->path);
+
+        DB::table('procurement_applications')->where('id', $applicationId)->update(['status' => 'submitted']);
+        $this->actingAs($applicant)->post(route('procurement.tenders.sections.update', $applicationId), [
+            'section' => 'attachments', 'delete_ids' => [$newFile->id],
+        ])->assertForbidden();
+        Storage::disk('local')->assertExists($newFile->path);
+    }
+
     public function test_first_section_save_allocates_daily_number_and_other_sections_remain_independent(): void
     {
         $user = $this->user();

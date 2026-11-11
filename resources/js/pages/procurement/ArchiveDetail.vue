@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import { canPreviewAttachment } from '@/lib/procurement-attachment';
 
 type Event = {
     id: number;
@@ -20,6 +21,7 @@ type Attachment = {
     kind: string;
     original_name: string;
     size: number;
+    mime_type: string | null;
 };
 defineProps<{
     application: {
@@ -185,11 +187,11 @@ const kindLabels: Record<string, string> = {
                         <span class="text-[var(--brand-muted)]">{{
                             kindLabels[file.kind] ?? file.kind
                         }}</span>
-                        <a
-                            :href="`/procurement/attachments/${file.id}/download`"
-                            class="font-medium text-[var(--brand-primary)] hover:underline"
-                            >{{ file.original_name }} ↗</a
-                        >
+                        <span class="flex flex-wrap items-center gap-[var(--brand-space-16)]">
+                            <span class="break-all text-[var(--brand-body)]">{{ file.original_name }}</span>
+                            <a v-if="canPreviewAttachment(file.mime_type)" :href="`/procurement/attachments/${file.id}/preview`" target="_blank" rel="noopener noreferrer" class="font-medium text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">预览</a>
+                            <a :href="`/procurement/attachments/${file.id}/download`" class="font-medium text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">下载</a>
+                        </span>
                     </li>
                 </ul>
             </section>

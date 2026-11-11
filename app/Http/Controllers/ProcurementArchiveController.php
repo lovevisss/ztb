@@ -25,7 +25,7 @@ class ProcurementArchiveController extends Controller
             'approvalSteps' => DB::table('approval_steps')->where('application_id', $application->id)->orderBy('attempt')->orderBy('position')->get(),
             'approvalEvents' => DB::table('approval_events')->where('application_id', $application->id)->orderBy('id')->get(),
             'executionEvents' => DB::table('procurement_execution_events')->where('application_id', $application->id)->orderBy('id')->get(),
-            'attachments' => DB::table('procurement_attachments')->where('application_id', $application->id)->orderBy('id')->get(['id', 'kind', 'original_name', 'size']),
+            'attachments' => DB::table('procurement_attachments')->where('application_id', $application->id)->orderBy('id')->get(['id', 'kind', 'original_name', 'size', 'mime_type']),
         ]);
     }
 

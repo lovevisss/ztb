@@ -61,6 +61,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('procurement/tenders/{application}/edit', [CentralTenderApplicationController::class, 'edit'])->name('procurement.tenders.edit');
     Route::put('procurement/tenders/{application}', [CentralTenderApplicationController::class, 'update'])->name('procurement.tenders.update');
     Route::get('procurement/attachments/{attachment}/download', [ProcurementAttachmentController::class, 'download'])->name('procurement.attachments.download');
+    Route::get('procurement/attachments/{attachment}/preview', [ProcurementAttachmentController::class, 'preview'])->name('procurement.attachments.preview');
     Route::get('procurement/classification-rules', [ProcurementClassificationRuleController::class, 'index'])->name('procurement.classification-rules.index');
     Route::post('procurement/classification-rules', [ProcurementClassificationRuleController::class, 'store'])->name('procurement.classification-rules.store');
     Route::get('procurement/approval-templates', [ApprovalTemplateController::class, 'index'])->name('procurement.approval-templates.index');
@@ -79,6 +80,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('procurement/applications/{application}/executor', [ProcurementExecutionController::class, 'assign'])->name('procurement.executions.assign');
     Route::post('procurement/approval-templates', [ApprovalTemplateController::class, 'store'])->name('procurement.approval-templates.store');
     Route::get('procurement/approvals', [ApprovalController::class, 'inbox'])->name('procurement.approvals.inbox');
+    Route::get('procurement/approval-progress', [ApprovalController::class, 'progress'])->name('procurement.approvals.progress');
     Route::post('procurement/approvals/{step}/decision', [ApprovalController::class, 'decide'])->name('procurement.approvals.decide');
     Route::put('procurement/approvals/{step}/assignee', [ApprovalController::class, 'reassign'])->name('procurement.approvals.reassign');
     Route::get('procurement/applications/{application}', [ApprovalController::class, 'show'])->name('procurement.applications.show');

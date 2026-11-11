@@ -28,7 +28,7 @@ class ProcurementExecutionController extends Controller
             'execution' => ProcurementExecution::query()->where('application_id', $application->id)->first(),
             'attachments' => ProcurementAttachment::query()->where('application_id', $application->id)
                 ->whereIn('kind', ['contract', 'result_announcement', 'acceptance', 'invoice', 'other_execution'])
-                ->get(['id', 'kind', 'original_name', 'size']),
+                ->get(['id', 'kind', 'original_name', 'size', 'mime_type']),
             'canEdit' => $application->status !== 'archived' && $access->canExecute($request->user(), $application),
         ]);
     }

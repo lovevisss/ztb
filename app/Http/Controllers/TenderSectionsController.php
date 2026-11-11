@@ -220,6 +220,9 @@ class TenderSectionsController extends Controller
             'attachments' => $request->validate([
                 'files' => ['nullable', 'array', 'max:10'],
                 'files.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:20480'],
+                'delete_ids' => ['nullable', 'array'],
+                'delete_ids.*' => ['required', 'integer', 'distinct', Rule::exists('procurement_attachments', 'id')
+                    ->where('application_id', $application?->id ?? -1)->where('kind', 'other')],
             ]),
         };
     }
@@ -349,6 +352,12 @@ class TenderSectionsController extends Controller
             }
             $application->update(['budget_basis_note' => $data['budget_basis_note'] ?? null]);
         } else {
+            $filesToDelete = ProcurementAttachment::query()->where('application_id', $application->id)
+                ->where('kind', 'other')->whereIn('id', $data['delete_ids'] ?? [])->get();
+            foreach ($filesToDelete as $existingFile) {
+                $oldPaths[] = $existingFile->path;
+                $existingFile->delete();
+            }
             foreach ($request->file('files', []) as $file) {
                 $path = $file->store('procurement/'.$application->id, 'local');
                 if ($path === false) {

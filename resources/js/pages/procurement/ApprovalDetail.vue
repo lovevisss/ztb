@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { computed, reactive } from 'vue';
 import WorkflowDiagram from './WorkflowDiagram.vue';
+import { canPreviewAttachment } from '@/lib/procurement-attachment';
 
 type FlowNode = { key: string; label: string; state: 'done' | 'active' | 'waiting' | 'stopped'; time?: string | null; timeLabel?: string | null; person?: string | null; personLabel?: string | null; result?: string | null; note?: string | null };
 
@@ -53,7 +54,7 @@ type Event = {
     created_at: string;
     actor_name: string | null;
 };
-type Attachment = { id: number; kind: string; original_name: string };
+type Attachment = { id: number; kind: string; original_name: string; mime_type: string | null };
 type Engineering = { project_name: string | null; construction_content: string | null; project_overview: string | null; schedule_requirements: string | null; estimated_cost_cents: number | null };
 type User = { id: number; name: string };
 
@@ -84,9 +85,14 @@ const props = defineProps<{
     currentUserId: number;
     canManageApprovals: boolean;
     users: User[];
+    workflowReturnUrl: string | null;
 }>();
 const decision = useForm({ action: 'approve', opinion: '' });
-const reassignment = useForm({ assignee_id: '' });
+const selectedAssignees = reactive<Record<number, number>>(Object.fromEntries(
+    props.steps.filter((step) => ['pending', 'queued'].includes(step.status)).map((step) => [step.id, step.assignee_id]),
+));
+const reassignmentErrors = reactive<Record<number, string>>({});
+const reassigning = reactive<Record<number, boolean>>({});
 const executorAssignment = useForm({
     executor_id: props.application.executor_id ?? ('' as number | ''),
 });
@@ -100,8 +106,12 @@ function decide(stepId: number, action: 'approve' | 'return' | 'reject') {
 }
 
 function reassign(stepId: number) {
-    reassignment.put(`/procurement/approvals/${stepId}/assignee`, {
-        onSuccess: () => reassignment.reset(),
+    reassigning[stepId] = true;
+    delete reassignmentErrors[stepId];
+    router.put(`/procurement/approvals/${stepId}/assignee${props.workflowReturnUrl ? window.location.search : ''}`, { assignee_id: selectedAssignees[stepId] }, {
+        preserveScroll: true,
+        onError: (errors) => { reassignmentErrors[stepId] = errors.assignee_id ?? '更新失败，请重试'; },
+        onFinish: () => { reassigning[stepId] = false; },
     });
 }
 
@@ -233,9 +243,9 @@ const longFields = computed(() => [
         class="procurement-detail-page w-full min-w-0 px-[var(--brand-space-24)] py-[var(--brand-space-32)] md:px-[var(--brand-space-32)] md:py-[var(--brand-space-32)]"
     >
         <Link
-            :href="currentUserId === application.applicant_id ? '/procurement/applications' : '/procurement/approvals'"
+            :href="workflowReturnUrl ?? (currentUserId === application.applicant_id ? '/procurement/applications' : '/procurement/approvals')"
             class="text-sm text-[var(--brand-primary)] hover:underline"
-            >← 返回{{ currentUserId === application.applicant_id ? '申请列表' : '待办' }}</Link
+            >← 返回{{ workflowReturnUrl ? '流程进度' : currentUserId === application.applicant_id ? '申请列表' : '待办' }}</Link
         >
         <header
             class="mt-[var(--brand-space-32)] flex flex-wrap items-end justify-between gap-[var(--brand-space-16)] border-b border-[var(--brand-border)] pb-[var(--brand-space-32)]"
@@ -303,7 +313,10 @@ const longFields = computed(() => [
                     <ul v-if="visibleAttachments.length" class="mt-[var(--brand-space-16)] divide-y divide-[var(--brand-border)]">
                         <li v-for="file in visibleAttachments" :key="file.id" class="flex flex-wrap items-center justify-between gap-[var(--brand-space-16)] py-[var(--brand-space-16)] text-sm">
                             <span class="min-w-0 break-all text-[var(--brand-body)]"><span class="mr-3 text-[var(--brand-muted)]">{{ attachmentKindLabel[file.kind] ?? file.kind }}</span>{{ file.original_name }}</span>
-                            <a :href="`/procurement/attachments/${file.id}/download`" class="shrink-0 font-medium text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">下载</a>
+                            <span class="flex shrink-0 items-center gap-[var(--brand-space-16)]">
+                                <a v-if="canPreviewAttachment(file.mime_type)" :href="`/procurement/attachments/${file.id}/preview`" target="_blank" rel="noopener noreferrer" class="font-medium text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">预览</a>
+                                <a :href="`/procurement/attachments/${file.id}/download`" class="font-medium text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">下载</a>
+                            </span>
                         </li>
                     </ul>
                     <p v-else class="pt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]">暂无上传材料</p>
@@ -599,27 +612,18 @@ const longFields = computed(() => [
                         :key="step.id"
                         class="mt-[var(--brand-space-16)] border-t border-[var(--brand-border)] pt-[var(--brand-space-16)]"
                     >
-                        <p
-                            class="mb-[var(--brand-space-8)] text-xs text-[var(--brand-muted)]"
-                        >
-                            {{ roleLabel[step.role_code] ?? step.role_code }}
-                        </p>
-                        <el-select
-                            v-model="reassignment.assignee_id"
-                            filterable
-                            placeholder="选择新审批人"
-                            class="w-full"
-                            ><el-option
-                                v-for="user in users"
-                                :key="user.id"
-                                :label="user.name"
-                                :value="user.id" /></el-select
-                        ><el-button
-                            class="mt-[var(--brand-space-8)]"
-                            size="small"
-                            @click="reassign(step.id)"
-                            >更新此节点</el-button
-                        >
+                        <div class="flex flex-wrap items-center justify-between gap-[var(--brand-space-8)] text-sm">
+                            <p class="font-semibold text-[var(--brand-title)]">{{ roleLabel[step.role_code] ?? step.role_code }}</p>
+                            <p class="text-[var(--brand-muted)]">当前审批人：{{ step.assignee_name || '未指定' }}</p>
+                        </div>
+                        <label :for="`assignee-${step.id}`" class="mt-[var(--brand-space-16)] block text-sm text-[var(--brand-body)]">选择审批人</label>
+                        <select :id="`assignee-${step.id}`" v-model.number="selectedAssignees[step.id]" class="mt-[var(--brand-space-8)] min-h-10 w-full rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] bg-[var(--brand-card)] px-[var(--brand-space-16)] text-sm text-[var(--brand-title)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]" @change="delete reassignmentErrors[step.id]">
+                            <option v-if="!users.some((user) => user.id === step.assignee_id)" :value="step.assignee_id">{{ step.assignee_name || '当前审批人' }}（不可重新选择）</option>
+                            <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
+                        </select>
+                        <p v-if="selectedAssignees[step.id] !== step.assignee_id" class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-body)]">将调整为：{{ users.find((user) => user.id === selectedAssignees[step.id])?.name || '请选择审批人' }}</p>
+                        <p v-if="reassignmentErrors[step.id]" class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-danger)]">{{ reassignmentErrors[step.id] }}</p>
+                        <button type="button" class="mt-[var(--brand-space-16)] min-h-10 rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] text-sm font-semibold text-[var(--brand-on-primary)] hover:bg-[var(--brand-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)] disabled:opacity-50" :disabled="reassigning[step.id] || selectedAssignees[step.id] === step.assignee_id || !users.some((user) => user.id === selectedAssignees[step.id])" @click="reassign(step.id)">{{ reassigning[step.id] ? '更新中…' : '更新此节点' }}</button>
                     </div>
                 </section>
                 <section

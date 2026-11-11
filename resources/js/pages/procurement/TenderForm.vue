@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { canPreviewAttachment } from '@/lib/procurement-attachment';
 
 type Item = { name: string; specification: string; quantity: number; unit_price: number; unit: string; remarks: string };
 type SavedItem = { name: string; specification: string | null; quantity: number; unit_price_cents: number; unit: string | null; remarks: string | null };
 type Indicator = { id: number; code: string | null; name: string; director: string | null; department_code: string | null; department_name: string | null; status: string | null; available_cents: number | null };
 type CatalogItem = { id: number; name: string; specification: string | null; unit: string | null; unit_price_cents: number; remarks: string | null };
 type Application = { id: number; status: string; project_number: string | null; title: string | null; category: string | null; contact_phone: string | null; purchase_method: string | null; is_special_purchase: boolean; special_purchase_reason: string | null; is_non_expenditure: boolean; has_usage_department: boolean; usage_department_id: number | null; procurement_requirements: string | null; remarks: string | null; budget_basis_note: string | null; budget_cents: number | null };
-type Attachment = { id: number; original_name: string; size: number };
+type Attachment = { id: number; original_name: string; size: number; mime_type: string | null };
 type Allocation = { budget_indicator_id: number; amount_cents: number; code: string | null; name: string; director: string | null };
 type Engineering = { project_name: string | null; construction_content: string | null; project_overview: string | null; schedule_requirements: string | null; estimated_cost_cents: number | null };
 
@@ -152,7 +153,8 @@ function selectIndicator(indicator: Indicator) {
     allocation.director = indicator.director;
     pickerIndex.value = null;
 }
-const attachmentForm = useForm<{ section: string; files: File[] }>({ section: 'attachments', files: [] });
+const attachmentInput = ref<HTMLInputElement | null>(null);
+const attachmentForm = useForm<{ section: string; files: File[]; delete_ids: number[] }>({ section: 'attachments', files: [], delete_ids: [] });
 const catalogForm = useForm({ name: '', specification: '', unit: '', unit_price: 0, remarks: '' });
 const editingCatalogId = ref<number | null>(null);
 const selectedCatalog = ref<number | ''>('');
@@ -167,7 +169,7 @@ const invalidQuantity = (value: string | number) => value !== '' && (!Number.isF
 function blankItem(): Item { return { name: '', specification: '', quantity: 1, unit_price: 0, unit: '', remarks: '' }; }
 function save(section: Tab | 'engineering') {
     const form = section === 'basic' ? basic : section === 'items' ? itemForm : section === 'engineering' ? engineeringForm : section === 'budget' ? budgetForm : attachmentForm;
-    const options = { preserveScroll: true, onSuccess: () => { if (section === 'attachments') attachmentForm.files = []; if (section === 'engineering') engineeringForm.bill_file = null; } };
+    const options = { preserveScroll: true, onSuccess: () => { if (section === 'attachments') { attachmentForm.files = []; attachmentForm.delete_ids = []; if (attachmentInput.value) attachmentInput.value.value = ''; } if (section === 'engineering') engineeringForm.bill_file = null; } };
     if (props.application) form.post(`/procurement/tenders/${props.application.id}/sections`, options);
     else form.post('/procurement/tenders/sections', options);
 }
@@ -202,7 +204,13 @@ function removeCatalog(id: number) {
     router.delete(`/procurement/catalog/${id}`, { preserveScroll: true });
 }
 function chooseFiles(event: Event) {
-    attachmentForm.files = Array.from((event.target as HTMLInputElement).files ?? []);
+    attachmentForm.files.push(...Array.from((event.target as HTMLInputElement).files ?? []));
+    (event.target as HTMLInputElement).value = '';
+}
+function toggleAttachmentDeletion(id: number) {
+    attachmentForm.delete_ids = attachmentForm.delete_ids.includes(id)
+        ? attachmentForm.delete_ids.filter((fileId) => fileId !== id)
+        : [...attachmentForm.delete_ids, id];
 }
 function chooseEngineeringBill(event: Event) {
     engineeringForm.bill_file = (event.target as HTMLInputElement).files?.[0] ?? null;
@@ -299,7 +307,7 @@ const importError = ref('');
                 <label class="block"><span class="label">项目概况 <span class="required">*</span></span><textarea v-model="engineeringForm.project_overview" class="field min-h-28" placeholder="项目经费来源项目说明；如为子项目，说明与总项目的关系" /><small class="error">{{ engineeringForm.errors.project_overview }}</small></label>
                 <label class="block"><span class="label">项目工期要求 <span class="required">*</span></span><textarea v-model="engineeringForm.schedule_requirements" class="field min-h-24" /><small class="error">{{ engineeringForm.errors.schedule_requirements }}</small></label>
                 <label class="block"><span class="label">工程总造价（元） <span class="required">*</span></span><input v-model="engineeringForm.estimated_cost" class="field" type="number" min="0" step="0.01" inputmode="decimal" /><small class="field-hint">金额保留两位小数</small><small v-if="invalidMoney(engineeringForm.estimated_cost)" class="error">请输入非负金额，最多保留两位小数。</small><small class="error">{{ engineeringForm.errors.estimated_cost }}</small></label>
-                <div><span class="label">清单附件 <span class="required">*</span></span><input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" @change="chooseEngineeringBill" /><small class="error">{{ engineeringForm.errors.bill_file }}</small><p v-if="engineeringBill" class="mt-2 text-sm"><a :href="`/procurement/attachments/${engineeringBill.id}/download`" class="text-[var(--brand-primary)] hover:underline">已上传：{{ engineeringBill.original_name }}</a></p></div>
+                <div><span class="label">清单附件 <span class="required">*</span></span><input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" @change="chooseEngineeringBill" /><small class="error">{{ engineeringForm.errors.bill_file }}</small><p v-if="engineeringBill" class="mt-2 flex flex-wrap items-center gap-[var(--brand-space-16)] text-sm"><span>已上传：{{ engineeringBill.original_name }}</span><a v-if="canPreviewAttachment(engineeringBill.mime_type)" :href="`/procurement/attachments/${engineeringBill.id}/preview`" target="_blank" rel="noopener noreferrer" class="text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">预览</a><a :href="`/procurement/attachments/${engineeringBill.id}/download`" class="text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">下载</a></p></div>
             </div>
             <button type="button" class="save" :disabled="engineeringForm.processing || !departmentAssigned" @click="save('engineering')">保存工程清单</button>
         </section>
@@ -374,9 +382,16 @@ const importError = ref('');
         <section id="attachments" class="panel">
             <h2 class="section-title">附件</h2>
             <p class="mb-4 text-sm text-[var(--brand-muted)]">按需上传论证资料、办公会纪要、党政联席会议单等。支持 PDF、Word、Excel 和图片，单个文件不超过 20 MB。</p>
-            <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" @change="chooseFiles" />
+            <input ref="attachmentInput" type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" class="sr-only" tabindex="-1" @change="chooseFiles" />
+            <button type="button" class="action" :disabled="attachmentForm.processing || !departmentAssigned" @click="attachmentInput?.click()">选择文件上传</button>
+            <p v-if="attachmentForm.files.length" class="mt-[var(--brand-space-16)] text-sm font-semibold text-[var(--brand-title)]">待上传文件</p>
+            <ul v-if="attachmentForm.files.length" class="mt-[var(--brand-space-8)] divide-y divide-[var(--brand-border)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] px-[var(--brand-space-16)]">
+                <li v-for="(file, index) in attachmentForm.files" :key="index" class="flex flex-wrap items-center justify-between gap-[var(--brand-space-8)] py-[var(--brand-space-8)] text-sm"><span class="min-w-0 break-all text-[var(--brand-body)]">{{ file.name }}</span><button type="button" class="text-[var(--brand-danger)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-danger)]" @click="attachmentForm.files.splice(index, 1)">移除</button></li>
+            </ul>
             <p class="error">{{ attachmentForm.errors.files }}</p>
-            <ul class="mt-5 space-y-2"><li v-for="file in attachments" :key="file.id"><a class="text-[var(--brand-primary)] hover:underline" :href="`/procurement/attachments/${file.id}/download`">{{ file.original_name }}</a></li></ul>
+            <p v-if="attachments.length" class="mt-[var(--brand-space-24)] text-sm font-semibold text-[var(--brand-title)]">已上传附件</p>
+            <ul v-if="attachments.length" class="mt-[var(--brand-space-8)] divide-y divide-[var(--brand-border)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] px-[var(--brand-space-16)]"><li v-for="file in attachments" :key="file.id" class="flex flex-wrap items-center justify-between gap-[var(--brand-space-8)] py-[var(--brand-space-8)] text-sm"><span class="min-w-0 break-all" :class="attachmentForm.delete_ids.includes(file.id) ? 'text-[var(--brand-muted)] line-through' : 'text-[var(--brand-body)]'">{{ file.original_name }}</span><span class="flex items-center gap-[var(--brand-space-16)]"><span v-if="attachmentForm.delete_ids.includes(file.id)" class="text-[var(--brand-danger)]">待删除</span><a v-if="canPreviewAttachment(file.mime_type) && !attachmentForm.delete_ids.includes(file.id)" class="text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]" :href="`/procurement/attachments/${file.id}/preview`" target="_blank" rel="noopener noreferrer">预览</a><a v-if="!attachmentForm.delete_ids.includes(file.id)" class="text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]" :href="`/procurement/attachments/${file.id}/download`">下载</a><button type="button" :disabled="attachmentForm.processing" class="text-[var(--brand-danger)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-danger)]" @click="toggleAttachmentDeletion(file.id)">{{ attachmentForm.delete_ids.includes(file.id) ? '撤销' : '删除' }}</button></span></li></ul>
+            <p v-if="attachmentForm.errors.delete_ids" class="error">{{ attachmentForm.errors.delete_ids }}</p>
             <button type="button" class="save" :disabled="attachmentForm.processing || !departmentAssigned" @click="save('attachments')">保存附件</button>
         </section>
         <div v-if="Object.keys(page.props.errors ?? {}).length" class="mt-6 rounded border border-[var(--brand-danger)] p-4 text-sm text-[var(--brand-danger)]"><p v-for="(message, key) in page.props.errors" :key="key">{{ message }}</p></div>

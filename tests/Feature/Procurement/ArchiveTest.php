@@ -108,6 +108,33 @@ class ArchiveTest extends TestCase
         $this->assertDatabaseHas('approval_events', ['application_id' => $id, 'details' => '原始审批记录']);
     }
 
+    public function test_attachment_preview_allows_browser_formats_only_for_authorized_users(): void
+    {
+        Storage::fake('local');
+        $applicant = $this->user('信息中心');
+        $outsider = $this->user('后勤处');
+        $applicationId = $this->application($applicant);
+
+        foreach (['application/pdf', 'image/png', 'image/jpeg'] as $index => $mimeType) {
+            $attachmentId = $this->attachment($applicationId, $applicant, 'preview_'.$index);
+            DB::table('procurement_attachments')->where('id', $attachmentId)->update(['mime_type' => $mimeType]);
+
+            $response = $this->actingAs($applicant)->get(route('procurement.attachments.preview', $attachmentId))
+                ->assertOk()
+                ->assertHeader('Content-Type', $mimeType)
+                ->assertHeader('X-Content-Type-Options', 'nosniff')
+                ->assertHeader('Cache-Control', 'no-store, private');
+            $this->assertStringStartsWith('inline;', $response->headers->get('Content-Disposition'));
+            $this->actingAs($outsider)->get(route('procurement.attachments.preview', $attachmentId))->assertForbidden();
+        }
+
+        $documentId = $this->attachment($applicationId, $applicant, 'document');
+        DB::table('procurement_attachments')->where('id', $documentId)->update(['mime_type' => 'application/msword']);
+        $this->actingAs($applicant)->get(route('procurement.attachments.preview', $documentId))->assertStatus(415);
+        $this->actingAs($applicant)->get(route('procurement.attachments.download', $documentId))->assertOk();
+        $this->actingAs($outsider)->get(route('procurement.attachments.preview', $documentId))->assertForbidden();
+    }
+
     public function test_admin_can_configure_distinct_required_materials_and_archive_keeps_rule_snapshot(): void
     {
         Storage::fake('local');

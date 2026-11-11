@@ -90,7 +90,7 @@ class CentralTenderApplicationController extends Controller
             'application' => $application,
             'attachments' => $application === null ? [] : ProcurementAttachment::query()
                 ->where('application_id', $application->id)->where('kind', '!=', 'engineering_bill')
-                ->get(['id', 'kind', 'original_name', 'size']),
+                ->get(['id', 'kind', 'original_name', 'size', 'mime_type']),
             'departmentAssigned' => $request->user()->department_id !== null,
             'threshold' => ProcurementClassificationRule::effectiveFor($request->user()->department_id)->threshold_cents / 100,
             'applicantName' => $request->user()->name,
@@ -101,7 +101,7 @@ class CentralTenderApplicationController extends Controller
             'engineering' => $application === null ? null : DB::table('procurement_engineering_details')->where('application_id', $application->id)->first(),
             'engineeringBill' => $application === null ? null : ProcurementAttachment::query()
                 ->where('application_id', $application->id)->where('kind', 'engineering_bill')
-                ->first(['id', 'original_name', 'size']),
+                ->first(['id', 'original_name', 'size', 'mime_type']),
             'allocations' => $application === null ? [] : DB::table('procurement_budget_allocations')->where('application_id', $application->id)->get(),
             'catalog' => DB::table('personal_catalog_items')->where('user_id', $request->user()->id)->orderBy('name')->get(),
             'canSyncBudgets' => $request->user()->hasAnyRole(['procurement_manager', 'system_admin']),

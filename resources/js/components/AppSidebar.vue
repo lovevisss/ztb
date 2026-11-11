@@ -66,6 +66,11 @@ if (canManageClassification) {
 
 if (usePage().props.canManageApprovals === true) {
     mainNavItems.push({
+        title: '流程进度',
+        href: '/procurement/approval-progress',
+        icon: IconGitBranch,
+    });
+    mainNavItems.push({
         title: '审批流程',
         href: '/procurement/approval-templates',
         icon: IconGitBranch,

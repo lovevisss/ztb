@@ -14,6 +14,55 @@ use Inertia\Response;
 
 class ApprovalController extends Controller
 {
+    public function progress(Request $request): Response
+    {
+        abort_unless($request->user()->hasAnyRole(['procurement_manager', 'system_admin']), 403);
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $search = trim($filters['search'] ?? '');
+        $projects = DB::table('procurement_applications as applications')
+            ->join('users as applicants', 'applicants.id', '=', 'applications.applicant_id')
+            ->whereExists(fn ($query) => $query->selectRaw('1')->from('approval_steps')
+                ->whereColumn('approval_steps.application_id', 'applications.id'))
+            ->when($search !== '', fn ($query) => $query->where(function ($matches) use ($search) {
+                $matches->where('applications.project_number', 'like', '%'.$search.'%')
+                    ->orWhere('applications.title', 'like', '%'.$search.'%')
+                    ->orWhere('applicants.name', 'like', '%'.$search.'%');
+            }))
+            ->orderByDesc('applications.submitted_at')->orderByDesc('applications.id')
+            ->select(['applications.id', 'applications.project_number', 'applications.title', 'applications.status',
+                'applications.submitted_at', 'applicants.name as applicant_name'])
+            ->paginate(15)->withQueryString();
+
+        $steps = DB::table('approval_steps')->leftJoin('users as assignees', 'assignees.id', '=', 'approval_steps.assignee_id')
+            ->whereIn('approval_steps.application_id', $projects->getCollection()->pluck('id'))
+            ->orderByDesc('approval_steps.attempt')->orderBy('approval_steps.position')
+            ->get(['approval_steps.application_id', 'approval_steps.attempt', 'approval_steps.role_code',
+                'approval_steps.status', 'assignees.name as assignee_name'])
+            ->groupBy('application_id');
+        $projects->getCollection()->transform(function ($project) use ($steps) {
+            $latest = $steps->get($project->id, collect());
+            $attempt = $latest->first()?->attempt;
+            $current = $project->status === 'submitted'
+                ? ($latest->first(fn ($step) => $step->attempt === $attempt && $step->status === 'pending')
+                    ?? $latest->first(fn ($step) => $step->attempt === $attempt && $step->status === 'queued'))
+                : null;
+            $project->attempt = $attempt;
+            $project->current_role_code = $current?->role_code;
+            $project->current_assignee_name = $current?->assignee_name;
+            $project->current_step_status = $current?->status;
+
+            return $project;
+        });
+
+        return Inertia::render('procurement/ApprovalProgress', [
+            'projects' => $projects,
+            'filters' => ['search' => $search],
+        ]);
+    }
+
     public function inbox(Request $request): Response
     {
         return Inertia::render('procurement/ApprovalInbox', [
@@ -34,6 +83,11 @@ class ApprovalController extends Controller
             ? null : ProcurementApplication::query()->find($application->source_application_id);
 
         return Inertia::render('procurement/ApprovalDetail', [
+            'workflowReturnUrl' => $request->user()->hasAnyRole(['procurement_manager', 'system_admin'])
+                && $request->query('from') === 'workflow'
+                ? route('procurement.approvals.progress', array_filter([
+                    'search' => $request->query('search'), 'page' => $request->query('page'),
+                ])) : null,
             'application' => $application,
             'applicantName' => DB::table('users')->where('id', $application->applicant_id)->value('name'),
             'applicantDepartmentName' => DB::table('departments')->where('id', $application->department_id)->value('name'),
@@ -50,7 +104,7 @@ class ApprovalController extends Controller
             'events' => DB::table('approval_events')->leftJoin('users', 'users.id', '=', 'approval_events.actor_id')
                 ->where('approval_events.application_id', $application->id)->orderBy('approval_events.id')
                 ->get(['approval_events.*', 'users.name as actor_name']),
-            'attachments' => DB::table('procurement_attachments')->where('application_id', $application->id)->get(['id', 'kind', 'original_name']),
+            'attachments' => DB::table('procurement_attachments')->where('application_id', $application->id)->get(['id', 'kind', 'original_name', 'mime_type']),
             'lineItems' => DB::table('procurement_line_items')->where('application_id', $application->id)->orderBy('position')->get(),
             'engineering' => DB::table('procurement_engineering_details')->where('application_id', $application->id)->first(),
             'budgetAllocations' => DB::table('procurement_budget_allocations')->where('application_id', $application->id)->get(),
@@ -141,6 +195,10 @@ class ApprovalController extends Controller
             ]);
         });
 
-        return to_route('procurement.applications.show', $step->application_id);
+        return to_route('procurement.applications.show', [
+            'application' => $step->application_id,
+            ...($request->query('from') === 'workflow' ? ['from' => 'workflow',
+                'search' => $request->query('search'), 'page' => $request->query('page')] : []),
+        ]);
     }
 }

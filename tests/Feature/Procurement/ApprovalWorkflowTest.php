@@ -44,6 +44,49 @@ class ApprovalWorkflowTest extends TestCase
         return (int) DB::table('procurement_applications')->max('id');
     }
 
+    public function test_managers_can_search_all_approval_progress_and_reassign_from_results(): void
+    {
+        $department = $this->department();
+        $applicant = $this->user($department);
+        $head = $this->user($department, 'department_head');
+        $replacement = $this->user($department, 'department_head');
+        $manager = $this->user($this->department('采购处'), 'procurement_manager');
+        $admin = $this->user($this->department('系统管理处'), 'system_admin');
+        $outsider = $this->user($this->department('其他部门'));
+        $id = $this->submit($applicant);
+        $number = DB::table('procurement_applications')->where('id', $id)->value('project_number');
+        $currentStep = DB::table('approval_steps')->where('application_id', $id)->where('status', 'pending')->first();
+        $newAssignee = $currentStep->assignee_id === $head->id ? $replacement : $head;
+
+        $this->actingAs($outsider)->get(route('procurement.approvals.progress'))->assertForbidden();
+        foreach ([$manager, $admin] as $viewer) {
+            foreach ([$number, '教学设备采购', $applicant->name] as $search) {
+                $this->actingAs($viewer)->get(route('procurement.approvals.progress', ['search' => $search]))
+                    ->assertOk()->assertInertia(fn ($page) => $page->component('procurement/ApprovalProgress')
+                        ->where('projects.total', 1)->where('projects.data.0.id', $id)
+                        ->where('projects.data.0.current_step_status', 'pending'));
+            }
+        }
+
+        $this->actingAs($manager)->put(route('procurement.approvals.reassign', $currentStep->id).'?from=workflow&search='.urlencode($number), [
+            'assignee_id' => $newAssignee->id,
+        ])->assertRedirect(route('procurement.applications.show', ['application' => $id, 'from' => 'workflow', 'search' => $number]));
+        $this->actingAs($manager)->get(route('procurement.approvals.progress', ['search' => $number]))
+            ->assertInertia(fn ($page) => $page->where('projects.data.0.current_assignee_name', $newAssignee->name));
+        $this->actingAs($manager)->get(route('procurement.applications.show', ['application' => $id, 'from' => 'workflow', 'search' => $number]))
+            ->assertInertia(fn ($page) => $page->where('workflowReturnUrl', route('procurement.approvals.progress', ['search' => $number])));
+
+        $this->actingAs($newAssignee)->post(route('procurement.approvals.decide', $currentStep->id), [
+            'action' => 'approve',
+        ])->assertRedirect();
+        $this->actingAs($manager)->put(route('procurement.approvals.reassign', $currentStep->id), [
+            'assignee_id' => $head->id,
+        ])->assertForbidden();
+        $this->actingAs($manager)->get(route('procurement.approvals.progress', ['search' => $number]))
+            ->assertInertia(fn ($page) => $page->where('projects.data.0.current_role_code', 'procurement_manager')
+                ->where('projects.data.0.current_step_status', 'pending'));
+    }
+
     public function test_department_head_then_procurement_manager_approve_in_order(): void
     {
         $department = $this->department();
