@@ -44,6 +44,53 @@ class ApprovalWorkflowTest extends TestCase
         return (int) DB::table('procurement_applications')->max('id');
     }
 
+    public function test_applicant_can_withdraw_mid_approval_and_restart_from_first_step(): void
+    {
+        $department = $this->department();
+        $applicant = $this->user($department);
+        $head = $this->user($department, 'department_head');
+        $manager = $this->user($this->department('采购处'), 'procurement_manager');
+        $id = $this->submit($applicant);
+        $first = DB::table('approval_steps')->where('application_id', $id)->where('position', 1)->first();
+        $second = DB::table('approval_steps')->where('application_id', $id)->where('position', 2)->first();
+
+        $this->actingAs($head)->post(route('procurement.approvals.decide', $first->id), ['action' => 'approve'])->assertRedirect();
+        $this->actingAs($applicant)->post(route('procurement.applications.withdraw', $id))->assertRedirect();
+        $this->assertDatabaseHas('procurement_applications', ['id' => $id, 'status' => 'withdrawn']);
+        $this->assertDatabaseHas('approval_steps', ['id' => $first->id, 'status' => 'approved']);
+        $this->assertDatabaseHas('approval_steps', ['id' => $second->id, 'status' => 'cancelled']);
+        $this->actingAs($manager)->get(route('procurement.approvals.inbox'))
+            ->assertInertia(fn ($page) => $page->where('steps', []));
+        $this->actingAs($manager)->post(route('procurement.approvals.decide', $second->id), ['action' => 'approve'])->assertForbidden();
+
+        $this->actingAs($applicant)->put(route('procurement.applications.update', $id), [
+            'intent' => 'submit', 'title' => '修改后的教学设备采购', 'budget' => 90000,
+            'funding_source' => '教学经费', 'organization_form' => '部门自行组织',
+            'purchase_method' => '询价', 'reason' => '教学需要',
+            'responsible_department' => '教务处', 'is_fixed_asset' => false,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('procurement_applications', ['id' => $id, 'status' => 'submitted', 'approval_attempt' => 2]);
+        $this->assertDatabaseHas('approval_steps', ['application_id' => $id, 'attempt' => 2, 'position' => 1, 'assignee_id' => $head->id, 'status' => 'pending']);
+        $this->assertDatabaseHas('approval_steps', ['application_id' => $id, 'attempt' => 2, 'position' => 2, 'assignee_id' => $manager->id, 'status' => 'queued']);
+        $this->actingAs($head)->post(route('procurement.approvals.decide', $first->id), ['action' => 'approve'])->assertForbidden();
+        $this->assertDatabaseHas('approval_events', ['application_id' => $id, 'event' => 'withdrawn', 'actor_id' => $applicant->id]);
+    }
+
+    public function test_only_applicant_can_withdraw_and_completed_approval_cannot_be_changed(): void
+    {
+        $department = $this->department();
+        $applicant = $this->user($department);
+        $head = $this->user($department, 'department_head');
+        $manager = $this->user($this->department('采购处'), 'procurement_manager');
+        $id = $this->submit($applicant);
+        $this->actingAs($manager)->post(route('procurement.applications.withdraw', $id))->assertForbidden();
+        $steps = DB::table('approval_steps')->where('application_id', $id)->orderBy('position')->get();
+        $this->actingAs($head)->post(route('procurement.approvals.decide', $steps[0]->id), ['action' => 'approve'])->assertRedirect();
+        $this->actingAs($manager)->post(route('procurement.approvals.decide', $steps[1]->id), ['action' => 'approve'])->assertRedirect();
+        $this->actingAs($applicant)->post(route('procurement.applications.withdraw', $id))->assertForbidden();
+        $this->actingAs($applicant)->get(route('procurement.applications.edit', $id))->assertForbidden();
+    }
+
     public function test_managers_can_search_all_approval_progress_and_reassign_from_results(): void
     {
         $department = $this->department();

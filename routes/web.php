@@ -49,6 +49,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('procurement/applications', [ProcurementApplicationController::class, 'store'])->name('procurement.applications.store');
     Route::get('procurement/applications/{application}/edit', [ProcurementApplicationController::class, 'edit'])->name('procurement.applications.edit');
     Route::put('procurement/applications/{application}', [ProcurementApplicationController::class, 'update'])->name('procurement.applications.update');
+    Route::post('procurement/applications/{application}/withdraw', [ApprovalController::class, 'withdraw'])->name('procurement.applications.withdraw');
     Route::get('procurement/tenders/create', [CentralTenderApplicationController::class, 'create'])->name('procurement.tenders.create');
     Route::get('procurement/tenders/create/form', [CentralTenderApplicationController::class, 'newForm'])->name('procurement.tenders.new-form');
     Route::post('procurement/tenders/sections', [TenderSectionsController::class, 'create'])->name('procurement.tenders.sections.create');

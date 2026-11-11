@@ -116,7 +116,7 @@ class ProcurementApplicationController extends Controller
     public function edit(Request $request, ProcurementApplication $application): Response
     {
         abort_unless($application->applicant_id === $request->user()->id, 403);
-        abort_unless(in_array($application->status, ['draft', 'returned'], true) && $application->application_form === 'self_purchase', 403);
+        abort_unless(in_array($application->status, ['draft', 'returned', 'withdrawn'], true) && $application->application_form === 'self_purchase', 403);
 
         return Inertia::render('procurement/Form', [
             'application' => $application,
@@ -152,13 +152,16 @@ class ProcurementApplicationController extends Controller
     public function update(Request $request, ProcurementApplication $application, ApprovalWorkflow $workflow): RedirectResponse
     {
         abort_unless($application->applicant_id === $request->user()->id, 403);
-        abort_unless(in_array($application->status, ['draft', 'returned'], true) && $application->application_form === 'self_purchase', 403);
+        abort_unless(in_array($application->status, ['draft', 'returned', 'withdrawn'], true) && $application->application_form === 'self_purchase', 403);
 
         $data = $this->validatedData($request);
         $this->validateSelfPurchaseBudget($request, $data, $application->department_id);
         DB::transaction(function () use ($application, $data, $request, $workflow) {
-            $application->update($data);
-            $this->submitIfRequested($application, $request, $workflow);
+            $locked = ProcurementApplication::query()->lockForUpdate()->findOrFail($application->id);
+            abort_unless($locked->applicant_id === $request->user()->id && $locked->application_form === 'self_purchase'
+                && in_array($locked->status, ['draft', 'returned', 'withdrawn'], true), 403);
+            $locked->update($data);
+            $this->submitIfRequested($locked, $request, $workflow);
         });
 
         return to_route('procurement.applications.index');

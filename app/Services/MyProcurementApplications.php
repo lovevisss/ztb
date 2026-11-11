@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 class MyProcurementApplications
 {
     private const STATUS_LABELS = [
-        'draft' => '草稿', 'returned' => '退回修改', 'submitted' => '审批中',
+        'draft' => '草稿', 'returned' => '退回修改', 'withdrawn' => '已撤回待修改', 'submitted' => '审批中',
         'rejected' => '已驳回', 'approved' => '审批通过', 'executing' => '执行中',
         'execution_completed' => '执行已完成', 'archived' => '已归档',
     ];
@@ -37,7 +37,7 @@ class MyProcurementApplications
                 'applicant_name' => $user->name,
                 'contact_phone' => $item->contact_phone,
                 'status' => self::STATUS_LABELS[$item->status] ?? $item->status,
-                'tab' => in_array($item->status, ['draft', 'returned'], true) ? 'draft' : 'submitted',
+                'tab' => in_array($item->status, ['draft', 'returned', 'withdrawn'], true) ? 'draft' : 'submitted',
                 'updated_at' => $item->updated_at?->toDateTimeString(),
                 'created_at' => $item->created_at?->toDateTimeString(),
             ]);

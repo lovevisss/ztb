@@ -131,10 +131,9 @@ class ApprovalController extends Controller
         ]);
 
         DB::transaction(function () use ($request, $step, $data) {
+            $application = ProcurementApplication::query()->lockForUpdate()->findOrFail($step->application_id);
             $locked = ApprovalStep::query()->lockForUpdate()->findOrFail($step->id);
             abort_unless($locked->status === 'pending' && $locked->assignee_id === $request->user()->id, 403);
-
-            $application = ProcurementApplication::query()->lockForUpdate()->findOrFail($locked->application_id);
             abort_unless($application->status === 'submitted' && $application->approval_attempt === $locked->attempt, 403);
 
             $locked->update([
@@ -173,14 +172,39 @@ class ApprovalController extends Controller
         return to_route('procurement.applications.show', $step->application_id);
     }
 
+    public function withdraw(Request $request, ProcurementApplication $application): RedirectResponse
+    {
+        DB::transaction(function () use ($request, $application) {
+            $locked = ProcurementApplication::query()->lockForUpdate()->findOrFail($application->id);
+            abort_unless($locked->applicant_id === $request->user()->id && $locked->status === 'submitted', 403);
+
+            ApprovalStep::query()->where('application_id', $locked->id)
+                ->where('attempt', $locked->approval_attempt)
+                ->whereIn('status', ['pending', 'queued'])
+                ->update(['status' => 'cancelled']);
+            $locked->update(['status' => 'withdrawn']);
+            DB::table('approval_events')->insert([
+                'application_id' => $locked->id,
+                'actor_id' => $request->user()->id,
+                'event' => 'withdrawn',
+                'details' => "第 {$locked->approval_attempt} 轮审批由经办人撤回修改",
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        });
+
+        return to_route('procurement.applications.show', $application->id);
+    }
+
     public function reassign(Request $request, ApprovalStep $step): RedirectResponse
     {
         abort_unless($request->user()->hasAnyRole(['procurement_manager', 'system_admin']), 403);
         $data = $request->validate(['assignee_id' => ['required', 'integer', Rule::exists('users', 'id')->where('is_active', true)]]);
 
         DB::transaction(function () use ($request, $step, $data) {
+            $application = ProcurementApplication::query()->lockForUpdate()->findOrFail($step->application_id);
             $locked = ApprovalStep::query()->lockForUpdate()->findOrFail($step->id);
-            abort_unless(in_array($locked->status, ['pending', 'queued'], true), 403);
+            abort_unless($application->status === 'submitted' && $application->approval_attempt === $locked->attempt
+                && in_array($locked->status, ['pending', 'queued'], true), 403);
             $oldAssignee = $locked->assignee_id;
             $locked->update(['assignee_id' => $data['assignee_id']]);
 

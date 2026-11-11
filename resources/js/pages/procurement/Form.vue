@@ -94,8 +94,8 @@ function save(intent: 'draft' | 'submit') {
             </p>
         </div>
 
-        <div v-if="application?.status === 'returned'" class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]">
-            此申请已退回。修改内容后可保存草稿，确认完成后点击“提交审核”，系统将开启新一轮审批。
+        <div v-if="['returned', 'withdrawn'].includes(application?.status ?? '')" class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]">
+            此申请{{ application?.status === 'withdrawn' ? '已撤回' : '已退回' }}。修改内容后可保存草稿，确认完成后点击“提交审核”，系统将从首环节开启新一轮审批。
         </div>
 
         <div

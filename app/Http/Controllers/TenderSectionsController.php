@@ -60,7 +60,9 @@ class TenderSectionsController extends Controller
         $oldPaths = [];
         try {
             DB::transaction(function () use ($request, $application, $section, $data, &$paths, &$oldPaths) {
-                $this->saveSection($request, $application, $section, $data, $paths, $oldPaths);
+                $locked = ProcurementApplication::query()->lockForUpdate()->findOrFail($application->id);
+                $this->authorizeDraft($request, $locked);
+                $this->saveSection($request, $locked, $section, $data, $paths, $oldPaths);
             });
         } catch (Throwable $exception) {
             Storage::disk('local')->delete($paths);
@@ -74,8 +76,9 @@ class TenderSectionsController extends Controller
     public function submit(Request $request, ProcurementApplication $application, ApprovalWorkflow $workflow): RedirectResponse
     {
         $this->authorizeDraft($request, $application);
-        DB::transaction(function () use ($application, $workflow) {
+        DB::transaction(function () use ($request, $application, $workflow) {
             $application = ProcurementApplication::query()->lockForUpdate()->findOrFail($application->id);
+            $this->authorizeDraft($request, $application);
             $errors = [];
             foreach (['title', 'category', 'contact_phone', 'procurement_requirements'] as $field) {
                 if (blank($application->{$field})) {
@@ -195,7 +198,7 @@ class TenderSectionsController extends Controller
     private function authorizeDraft(Request $request, ProcurementApplication $application): void
     {
         abort_unless($application->applicant_id === $request->user()->id, 403);
-        abort_unless($application->application_form === 'central_tender' && in_array($application->status, ['draft', 'returned'], true), 403);
+        abort_unless($application->application_form === 'central_tender' && in_array($application->status, ['draft', 'returned', 'withdrawn'], true), 403);
     }
 
     private function sectionData(Request $request, string $section, ?ProcurementApplication $application = null): array

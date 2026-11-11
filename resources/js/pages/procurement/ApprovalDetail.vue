@@ -101,6 +101,13 @@ const executorAssignment = useForm({
     executor_id: props.application.executor_id ?? ('' as number | ''),
 });
 const archiving = useForm({ materials: '' });
+const withdrawing = useForm({});
+
+function withdraw() {
+    if (window.confirm('撤回后本轮审批停止，重新提交将从第一个环节重新审核。确定撤回吗？')) {
+        withdrawing.post(`/procurement/applications/${props.application.id}/withdraw`);
+    }
+}
 
 function decide(stepId: number, action: 'approve' | 'return' | 'reject') {
     decision.action = action;
@@ -177,14 +184,15 @@ const statusLabel: Record<string, string> = {
     execution_completed: '执行已完成',
     archived: '已归档',
     returned: '退回修改',
+    withdrawn: '已撤回待修改',
     rejected: '已驳回',
     cancelled: '已取消',
 };
 const eventLabel: Record<string, string> = {
     submitted: '提交申请', resubmitted: '重新提交', approved: '审批通过',
-    returned: '退回修改', rejected: '驳回申请', reassigned: '调整审批人',
+    returned: '退回修改', withdrawn: '经办人撤回', rejected: '驳回申请', reassigned: '调整审批人',
 };
-const editHref = computed(() => props.application.status === 'returned' && props.application.applicant_id === props.currentUserId
+const editHref = computed(() => ['returned', 'withdrawn'].includes(props.application.status) && props.application.applicant_id === props.currentUserId
     ? props.application.application_form === 'central_tender'
         ? `/procurement/tenders/${props.application.id}/edit`
         : `/procurement/applications/${props.application.id}/edit`
@@ -199,6 +207,10 @@ const flowRounds = computed(() => {
     return attempts.map((attempt, index) => {
         const steps = props.steps.filter((step) => step.attempt === attempt);
         const terminal = steps.find((step) => ['returned', 'rejected'].includes(step.status));
+        const submissionEventIndex = props.events.findIndex((event) => event.id === submissions[index]?.id);
+        const nextSubmissionEventIndex = props.events.findIndex((event, eventIndex) => eventIndex > submissionEventIndex && ['submitted', 'resubmitted'].includes(event.event));
+        const withdrawn = props.events.slice(submissionEventIndex + 1, nextSubmissionEventIndex < 0 ? undefined : nextSubmissionEventIndex)
+            .find((event) => event.event === 'withdrawn');
         const last = steps.at(-1);
         const complete = steps.length > 0 && steps.every((step) => step.status === 'approved');
         const nodes: FlowNode[] = [{
@@ -214,9 +226,9 @@ const flowRounds = computed(() => {
             note: step.opinion,
         });
         nodes.push({
-            key: `end-${attempt}`, label: terminal ? statusLabel[terminal.status] ?? terminal.status : '完成',
-            state: terminal ? 'stopped' : complete ? 'done' : 'waiting',
-            time: terminal?.acted_at ?? (complete ? last?.acted_at : null),
+            key: `end-${attempt}`, label: terminal ? statusLabel[terminal.status] ?? terminal.status : withdrawn ? '已撤回' : '完成',
+            state: terminal || withdrawn ? 'stopped' : complete ? 'done' : 'waiting',
+            time: terminal?.acted_at ?? withdrawn?.created_at ?? (complete ? last?.acted_at : null),
             timeLabel: '结束时间',
         });
         return { attempt, nodes };
@@ -297,10 +309,14 @@ const longFields = computed(() => [
             </p>
         </header>
 
+        <section v-if="application.status === 'submitted' && application.applicant_id === currentUserId" class="mt-[var(--brand-space-24)] flex flex-wrap items-center justify-between gap-[var(--brand-space-16)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-24)]">
+            <div><h2 class="text-lg font-semibold text-[var(--brand-title)]">需要修改申请？</h2><p class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-body)]">撤回后当前审批停止，重新提交将从首环节重新审核。</p></div>
+            <button type="button" :disabled="withdrawing.processing" class="inline-flex min-h-10 items-center rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] px-[var(--brand-space-24)] text-sm font-semibold text-[var(--brand-warning)] disabled:opacity-50" @click="withdraw">撤回修改</button>
+        </section>
         <section v-if="editHref" class="mt-[var(--brand-space-24)] flex flex-wrap items-center justify-between gap-[var(--brand-space-16)] rounded-[var(--brand-radius-lg)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-24)]">
             <div>
-                <h2 class="text-lg font-semibold text-[var(--brand-title)]">申请已退回，等待修改后重新提交</h2>
-                <p class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-body)]">退回审批人：{{ latestReturn?.assignee_name || '未指定' }}<span v-if="latestReturn?.opinion"> · 意见：{{ latestReturn.opinion }}</span></p>
+                <h2 class="text-lg font-semibold text-[var(--brand-title)]">{{ application.status === 'withdrawn' ? '申请已撤回，等待修改后重新提交' : '申请已退回，等待修改后重新提交' }}</h2>
+                <p v-if="application.status === 'returned'" class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-body)]">退回审批人：{{ latestReturn?.assignee_name || '未指定' }}<span v-if="latestReturn?.opinion"> · 意见：{{ latestReturn.opinion }}</span></p>
             </div>
             <Link :href="editHref" class="inline-flex min-h-10 items-center rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] text-sm font-semibold text-[var(--brand-on-primary)] hover:bg-[var(--brand-primary-hover)]">修改申请</Link>
         </section>

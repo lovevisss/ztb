@@ -72,7 +72,7 @@ function detailHref(item: Record) {
 }
 function actionLabel(item: Record) {
     return item.source_id !== null ? '查看档案' : item.tab === 'draft'
-        ? item.status === '退回修改' ? '修改申请' : '继续编辑' : '查看进度';
+        ? ['退回修改', '已撤回待修改'].includes(item.status) ? '修改申请' : '继续编辑' : '查看进度';
 }
 </script>
 

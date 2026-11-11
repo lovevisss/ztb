@@ -77,9 +77,11 @@ class CentralTenderApplicationController extends Controller
         $storedPaths = [];
         try {
             DB::transaction(function () use ($request, $application, $data, $workflow, &$storedPaths) {
-                $application->update($data);
-                $this->storeAttachments($request, $application, $storedPaths);
-                $this->submitIfRequested($request, $application, $workflow);
+                $locked = ProcurementApplication::query()->lockForUpdate()->findOrFail($application->id);
+                $this->authorizeDraft($request, $locked);
+                $locked->update($data);
+                $this->storeAttachments($request, $locked, $storedPaths);
+                $this->submitIfRequested($request, $locked, $workflow);
             });
         } catch (Throwable $exception) {
             Storage::disk('local')->delete($storedPaths);
@@ -116,7 +118,7 @@ class CentralTenderApplicationController extends Controller
     private function authorizeDraft(Request $request, ProcurementApplication $application): void
     {
         abort_unless($application->applicant_id === $request->user()->id, 403);
-        abort_unless(in_array($application->status, ['draft', 'returned'], true) && $application->application_form === 'central_tender', 403);
+        abort_unless(in_array($application->status, ['draft', 'returned', 'withdrawn'], true) && $application->application_form === 'central_tender', 403);
     }
 
     /** @return array<string, string|int|bool|null> */
