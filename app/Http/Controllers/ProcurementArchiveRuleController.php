@@ -45,6 +45,8 @@ class ProcurementArchiveRuleController extends Controller
                     ]);
             }
         });
+        $request->attributes->set('audit_subject', ['type' => 'archive_rule', 'id' => $data['application_form'],
+            'label' => $data['application_form'] === 'central_tender' ? '统一招标归档规则' : '部门自行采购归档规则']);
 
         return to_route('procurement.archive-rules.index');
     }

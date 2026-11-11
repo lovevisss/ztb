@@ -264,6 +264,11 @@ class ApprovalWorkflowTest extends TestCase
         $this->actingAs($head)->post(route('procurement.approvals.decide', $stepId), ['action' => 'return'])->assertSessionHasErrors('opinion');
         $this->actingAs($head)->post(route('procurement.approvals.decide', $stepId), ['action' => 'approve'])->assertRedirect();
         $this->actingAs($head)->post(route('procurement.approvals.decide', $stepId), ['action' => 'approve'])->assertForbidden();
+        $this->assertSame(1, DB::table('operation_records')->where('action', 'decision')->count());
+        $this->assertDatabaseHas('operation_records', [
+            'actor_id' => $head->id, 'action' => 'decision', 'summary' => '审批通过',
+            'subject_type' => 'application', 'subject_id' => (string) $id,
+        ]);
     }
 
     public function test_manager_can_reassign_pending_step_and_old_assignee_loses_access(): void

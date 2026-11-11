@@ -67,6 +67,9 @@ class ProcurementHistoryController extends Controller
             return $copy;
         });
 
+        $request->attributes->set('audit_subject', ['type' => 'application', 'id' => (string) $copy->id,
+            'label' => $copy->project_number ?? $copy->title]);
+
         return $copy->application_form === 'central_tender'
             ? to_route('procurement.tenders.edit', $copy->id)
             : to_route('procurement.applications.edit', $copy->id);

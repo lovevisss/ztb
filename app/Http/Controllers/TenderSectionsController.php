@@ -45,6 +45,8 @@ class TenderSectionsController extends Controller
             throw $exception;
         }
         Storage::disk('local')->delete($oldPaths);
+        $request->attributes->set('audit_subject', ['type' => 'application', 'id' => (string) $application->id,
+            'label' => $application->project_number ?? $application->title]);
 
         return to_route('procurement.tenders.edit', ['application' => $application->id, 'tab' => $section === 'engineering' ? 'items' : $section]);
     }
@@ -139,7 +141,7 @@ class TenderSectionsController extends Controller
             'unit_price' => ['required', 'numeric', 'min:0', 'decimal:0,2'],
             'remarks' => ['nullable', 'string'],
         ]);
-        DB::table('personal_catalog_items')->insert([
+        $itemId = DB::table('personal_catalog_items')->insertGetId([
             'user_id' => $request->user()->id,
             'name' => $data['name'],
             'specification' => $data['specification'] ?? null,
@@ -148,6 +150,8 @@ class TenderSectionsController extends Controller
             'remarks' => $data['remarks'] ?? null,
             'created_at' => now(), 'updated_at' => now(),
         ]);
+        $request->attributes->set('audit_subject', ['type' => 'catalog_item', 'id' => (string) $itemId,
+            'label' => $data['name']]);
 
         return back();
     }

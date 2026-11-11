@@ -56,13 +56,15 @@ class ProcurementClassificationRuleController extends Controller
             'effective_at' => ['required', 'date'],
         ]);
 
-        ProcurementClassificationRule::create([
+        $rule = ProcurementClassificationRule::create([
             'threshold_cents' => (int) round((float) $data['threshold_yuan'] * 100),
             'scope' => $data['scope'],
             'department_id' => $data['scope'] === 'department' ? $data['department_id'] : null,
             'effective_at' => $data['effective_at'],
             'created_by' => $request->user()->id,
         ]);
+        $request->attributes->set('audit_subject', ['type' => 'classification_rule', 'id' => (string) $rule->id,
+            'label' => $data['scope'] === 'global' ? '全局分类规则' : '部门分类规则']);
 
         return to_route('procurement.classification-rules.index');
     }

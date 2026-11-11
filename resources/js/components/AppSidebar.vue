@@ -11,6 +11,7 @@ import {
     IconArchive,
     IconUsers,
     IconHierarchy,
+    IconListDetails,
 } from '@tabler/icons-vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -83,6 +84,11 @@ if (usePage().props.canManageApprovals === true) {
 }
 
 if (usePage().props.canManageSchoolUsers === true) {
+    mainNavItems.push({
+        title: '操作记录',
+        href: '/admin/operation-records',
+        icon: IconListDetails,
+    });
     mainNavItems.push({
         title: '校内账号',
         href: '/admin/school-identities',

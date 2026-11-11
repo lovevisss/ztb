@@ -7,6 +7,7 @@ use App\Http\Controllers\BudgetIndicatorController;
 use App\Http\Controllers\TenderSectionsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LegacyProcurementController;
+use App\Http\Controllers\OperationRecordController;
 use App\Http\Controllers\ProcurementApplicationController;
 use App\Http\Controllers\ProcurementArchiveController;
 use App\Http\Controllers\ProcurementArchiveRuleController;
@@ -35,6 +36,7 @@ Route::match(['get', 'post'], 'auth/cas/slo', CasSloController::class)
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::get('admin/operation-records', [OperationRecordController::class, 'index'])->name('operation-records.index');
     Route::get('admin/school-identities', [SchoolIdentityController::class, 'index'])->name('school-identities.index');
     Route::put('admin/school-identities/{user}', [SchoolIdentityController::class, 'update'])->name('school-identities.update');
     Route::put('admin/school-identities/{user}/roles', [SchoolIdentityController::class, 'updateRoles'])->name('school-identities.roles.update');

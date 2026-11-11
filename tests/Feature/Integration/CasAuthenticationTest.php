@@ -92,6 +92,10 @@ class CasAuthenticationTest extends TestCase
         $this->assertDatabaseHas('cas_auth_events', [
             'user_id' => $user->id, 'account_hash' => hash('sha256', '007'), 'outcome' => 'authenticated',
         ]);
+        $this->assertDatabaseHas('operation_records', [
+            'actor_id' => $user->id, 'action' => 'cas_authenticated', 'outcome' => 'success',
+        ]);
+        $this->assertSame(1, DB::table('operation_records')->where('category', 'login')->count());
     }
 
     public function test_missing_inactive_and_fuzzy_accounts_are_denied(): void

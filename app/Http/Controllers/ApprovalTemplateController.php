@@ -55,7 +55,7 @@ class ApprovalTemplateController extends Controller
             throw ValidationException::withMessages(['steps' => '审批流程必须包含采购管理部门审核节点。']);
         }
 
-        DB::transaction(function () use ($request, $data) {
+        $templateId = DB::transaction(function () use ($request, $data) {
             $version = (int) DB::table('approval_templates')->where('purchase_type', $data['purchase_type'])->max('version') + 1;
             $templateId = DB::table('approval_templates')->insertGetId([
                 'name' => $data['name'],
@@ -79,7 +79,11 @@ class ApprovalTemplateController extends Controller
                     'assignee_id' => $step['assignee_id'] ?? null,
                 ]);
             }
+
+            return $templateId;
         });
+        $request->attributes->set('audit_subject', ['type' => 'approval_template', 'id' => (string) $templateId,
+            'label' => $data['name']]);
 
         return to_route('procurement.approval-templates.index');
     }

@@ -131,7 +131,7 @@ class ProcurementApplicationController extends Controller
 
         $data = $this->validatedData($request);
         $this->validateSelfPurchaseBudget($request, $data, $request->user()->department_id);
-        DB::transaction(function () use ($request, $data, $workflow) {
+        $application = DB::transaction(function () use ($request, $data, $workflow) {
             $application = ProcurementApplication::create([
                 ...$data,
                 'application_form' => 'self_purchase',
@@ -140,7 +140,11 @@ class ProcurementApplicationController extends Controller
             ]);
 
             $this->submitIfRequested($application, $request, $workflow);
+
+            return $application;
         });
+        $request->attributes->set('audit_subject', ['type' => 'application', 'id' => (string) $application->id,
+            'label' => $application->project_number ?? $application->title]);
 
         return to_route('procurement.applications.index');
     }

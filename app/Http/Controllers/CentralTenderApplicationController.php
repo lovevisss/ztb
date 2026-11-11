@@ -44,7 +44,7 @@ class CentralTenderApplicationController extends Controller
 
         $storedPaths = [];
         try {
-            DB::transaction(function () use ($request, $data, $workflow, &$storedPaths) {
+            $application = DB::transaction(function () use ($request, $data, $workflow, &$storedPaths) {
                 $application = ProcurementApplication::create([
                     ...$data,
                     'application_form' => 'central_tender',
@@ -53,11 +53,16 @@ class CentralTenderApplicationController extends Controller
                 ]);
                 $this->storeAttachments($request, $application, $storedPaths);
                 $this->submitIfRequested($request, $application, $workflow);
+
+                return $application;
             });
         } catch (Throwable $exception) {
             Storage::disk('local')->delete($storedPaths);
             throw $exception;
         }
+
+        $request->attributes->set('audit_subject', ['type' => 'application', 'id' => (string) $application->id,
+            'label' => $application->project_number ?? $application->title]);
 
         return to_route('procurement.applications.index');
     }

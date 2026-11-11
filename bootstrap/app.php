@@ -3,6 +3,8 @@
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RecordOperation;
+use App\Services\OperationRecorder;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -24,11 +26,17 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             EnsureActiveUser::class,
             HandleInertiaRequests::class,
+            RecordOperation::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(fn (InvalidTicketException $exception, Request $request) => response('统一认证票据无效或已过期。', 422));
+        $exceptions->render(function (InvalidTicketException $exception, Request $request) {
+            app(OperationRecorder::class)->record(null, null, 'login', 'cas_ticket_invalid', '统一认证票据无效或已过期',
+                'account', null, null, 'failure');
+
+            return response('统一认证票据无效或已过期。', 422);
+        });
         $exceptions->render(fn (CasUnavailableException $exception, Request $request) => response('统一认证服务暂不可用。', 503));
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
