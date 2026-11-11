@@ -14,13 +14,24 @@ class AuthenticationTest extends TestCase
 
     public function test_login_screen_can_be_rendered()
     {
+        config()->set('cas.service_url', null);
         $response = $this->get(route('login'));
 
         $response->assertOk();
     }
 
+    public function test_login_redirects_to_cas_only_when_callback_is_configured()
+    {
+        config()->set('cas.service_url', 'https://ztb.zufedfc.edu.cn/auth/cas/callback');
+        $this->get(route('login'))->assertRedirect(route('cas.login'));
+
+        config()->set('cas.service_url', 'https://ztb.zufedfc.edu.cn/wrong-callback');
+        $this->get(route('login'))->assertOk();
+    }
+
     public function test_users_can_authenticate_using_the_login_screen()
     {
+        config()->set('cas.service_url', 'https://ztb.zufedfc.edu.cn/auth/cas/callback');
         $user = User::factory()->create();
 
         $response = $this->post(route('login.store'), [

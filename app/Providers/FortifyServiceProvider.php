@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Middleware\EnsureCasConfigured;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -48,11 +49,13 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureViews(): void
     {
-        Fortify::loginView(fn (Request $request) => Inertia::render('auth/Login', [
-            'canResetPassword' => Features::enabled(Features::resetPasswords()),
-            'casConfigured' => is_string(config('cas.service_url')) && str_starts_with(config('cas.service_url'), 'https://'),
-            'status' => $request->session()->get('status'),
-        ]));
+        Fortify::loginView(fn (Request $request) => EnsureCasConfigured::isConfigured()
+            ? redirect()->route('cas.login')
+            : Inertia::render('auth/Login', [
+                'canResetPassword' => Features::enabled(Features::resetPasswords()),
+                'casConfigured' => false,
+                'status' => $request->session()->get('status'),
+            ]));
 
         Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/ResetPassword', [
             'email' => $request->email,

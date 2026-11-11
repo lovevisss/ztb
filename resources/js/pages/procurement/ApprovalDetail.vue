@@ -88,8 +88,12 @@ const props = defineProps<{
     workflowReturnUrl: string | null;
 }>();
 const decision = useForm({ action: 'approve', opinion: '' });
-const selectedAssignees = reactive<Record<number, number>>(Object.fromEntries(
+type AssigneeSuggestion = { value: string; id: number };
+const selectedAssignees = reactive<Record<number, number | null>>(Object.fromEntries(
     props.steps.filter((step) => ['pending', 'queued'].includes(step.status)).map((step) => [step.id, step.assignee_id]),
+));
+const assigneeInputs = reactive<Record<number, string>>(Object.fromEntries(
+    props.steps.filter((step) => ['pending', 'queued'].includes(step.status)).map((step) => [step.id, step.assignee_name ?? '']),
 ));
 const reassignmentErrors = reactive<Record<number, string>>({});
 const reassigning = reactive<Record<number, boolean>>({});
@@ -113,6 +117,23 @@ function reassign(stepId: number) {
         onError: (errors) => { reassignmentErrors[stepId] = errors.assignee_id ?? '更新失败，请重试'; },
         onFinish: () => { reassigning[stepId] = false; },
     });
+}
+
+function searchAssignees(query: string, callback: (suggestions: AssigneeSuggestion[]) => void) {
+    const term = query.trim().toLocaleLowerCase();
+    callback(term ? props.users.filter((user) => user.name.toLocaleLowerCase().includes(term))
+        .map((user) => ({ value: user.name, id: user.id })) : []);
+}
+
+function editAssignee(stepId: number, name: string) {
+    assigneeInputs[stepId] = name;
+    selectedAssignees[stepId] = null;
+    delete reassignmentErrors[stepId];
+}
+
+function selectAssignee(stepId: number, suggestion: AssigneeSuggestion) {
+    assigneeInputs[stepId] = suggestion.value;
+    selectedAssignees[stepId] = suggestion.id;
 }
 
 function assignExecutor() {
@@ -617,20 +638,18 @@ const longFields = computed(() => [
                             <p class="text-[var(--brand-muted)]">当前审批人：{{ step.assignee_name || '未指定' }}</p>
                         </div>
                         <label :for="`assignee-${step.id}`" class="mt-[var(--brand-space-16)] block text-sm text-[var(--brand-body)]">选择审批人</label>
-                        <el-select
+                        <el-autocomplete
                             :id="`assignee-${step.id}`"
-                            v-model="selectedAssignees[step.id]"
-                            filterable
+                            :model-value="assigneeInputs[step.id]"
+                            :fetch-suggestions="searchAssignees"
+                            :trigger-on-focus="false"
+                            highlight-first-item
                             placeholder="输入姓名搜索审批人"
-                            no-match-text="没有匹配的审批人"
-                            no-data-text="暂无可选审批人"
                             class="mt-[var(--brand-space-8)] w-full"
-                            @change="delete reassignmentErrors[step.id]"
-                        >
-                            <el-option v-if="!users.some((user) => user.id === step.assignee_id)" :label="`${step.assignee_name || '当前审批人'}（不可重新选择）`" :value="step.assignee_id" disabled />
-                            <el-option v-for="user in users" :key="user.id" :label="user.name" :value="user.id" />
-                        </el-select>
-                        <p v-if="selectedAssignees[step.id] !== step.assignee_id" class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-body)]">将调整为：{{ users.find((user) => user.id === selectedAssignees[step.id])?.name || '请选择审批人' }}</p>
+                            @update:model-value="editAssignee(step.id, $event)"
+                            @select="selectAssignee(step.id, $event)"
+                        />
+                        <p v-if="assigneeInputs[step.id].trim() && !users.some((user) => user.name.includes(assigneeInputs[step.id].trim()))" class="mt-[var(--brand-space-8)] text-xs text-[var(--brand-muted)]">没有匹配的审批人</p>
                         <p v-if="reassignmentErrors[step.id]" class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-danger)]">{{ reassignmentErrors[step.id] }}</p>
                         <button type="button" class="mt-[var(--brand-space-16)] min-h-10 rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] text-sm font-semibold text-[var(--brand-on-primary)] hover:bg-[var(--brand-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)] disabled:opacity-50" :disabled="reassigning[step.id] || selectedAssignees[step.id] === step.assignee_id || !users.some((user) => user.id === selectedAssignees[step.id])" @click="reassign(step.id)">{{ reassigning[step.id] ? '更新中…' : '更新此节点' }}</button>
                     </div>

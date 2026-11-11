@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Route;
 use Lovevisss\LaravelZufedfcCas\Http\Controllers\LogoutController as CasLogoutController;
 use Lovevisss\LaravelZufedfcCas\Http\Controllers\SloController as CasSloController;
 
-Route::inertia('/', 'Welcome')->name('home');
+Route::redirect('/', '/dashboard')->name('home');
 Route::inertia('access-denied', 'auth/AccessDenied')->name('access-denied');
 Route::get('auth/cas/login', SchoolCasLoginController::class)->middleware(EnsureCasConfigured::class)->name('cas.login');
 Route::get('auth/cas/callback', SchoolCasCallbackController::class)->middleware(EnsureCasConfigured::class)->name('cas.callback');
