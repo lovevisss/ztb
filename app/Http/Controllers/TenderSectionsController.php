@@ -353,6 +353,7 @@ class TenderSectionsController extends Controller
                     'code' => $snapshot?->code ?? $indicator->code,
                     'name' => $snapshot?->name ?? $indicator->name,
                     'director' => $snapshot?->director ?? $indicator->director,
+                    'charge_sno' => $snapshot?->charge_sno ?? $indicator->charge_sno,
                     'amount_cents' => (int) round($allocation['amount'] * 100),
                     'created_at' => now(), 'updated_at' => now(),
                 ]);

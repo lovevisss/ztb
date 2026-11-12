@@ -35,6 +35,7 @@ class SyncBudgetIndicators extends Command
                     'code' => $code,
                     'name' => $name !== '' ? $name : '未命名经费项目',
                     'director' => $this->nullableText($row->charge_name),
+                    'charge_sno' => $this->nullableText($row->charge_sno ?? null),
                     'department_code' => $this->nullableText($row->departcode),
                     'department_name' => $this->nullableText($row->departname),
                     'status' => strtoupper(trim((string) $row->validity)) === 'Y' ? '1' : '0',
@@ -52,10 +53,22 @@ class SyncBudgetIndicators extends Command
                     ->update(['status' => '0', 'updated_at' => $now]);
                 foreach (array_chunk($rows, 500) as $chunk) {
                     DB::table('budget_indicators')->upsert($chunk, ['source_id'], [
-                        'source', 'code', 'name', 'director', 'department_code',
+                        'source', 'code', 'name', 'director', 'charge_sno', 'department_code',
                         'department_name', 'status', 'available_cents', 'updated_at',
                     ]);
                 }
+                DB::table('procurement_budget_allocations')->whereNull('charge_sno')
+                    ->orderBy('id')->chunkById(500, function ($allocations) use ($now): void {
+                        $accounts = DB::table('budget_indicators')->whereIn('id', $allocations->pluck('budget_indicator_id'))
+                            ->pluck('charge_sno', 'id');
+                        foreach ($allocations as $allocation) {
+                            $account = $accounts[$allocation->budget_indicator_id] ?? null;
+                            if ($account !== null) {
+                                DB::table('procurement_budget_allocations')->where('id', $allocation->id)
+                                    ->update(['charge_sno' => $account, 'updated_at' => $now]);
+                            }
+                        }
+                    });
             });
             $this->info('已同步 '.count($rows).' 条经费代码，其中启用 '.count(array_filter($rows, fn (array $row) => $row['status'] === '1')).' 条。');
 

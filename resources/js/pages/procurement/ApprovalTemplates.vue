@@ -16,12 +16,14 @@ type Template = {
 type Department = { id: number; name: string };
 type User = { id: number; name: string; department_id: number | null };
 type Role = { code: string; name: string };
+type DepartmentApprover = { department_id: number; supervising_leader_id: number; tender_group_representative_id: number };
 
-defineProps<{
+const props = defineProps<{
     templates: Template[];
     departments: Department[];
     users: User[];
     roles: Role[];
+    departmentApprovers: DepartmentApprover[];
 }>();
 
 const form = useForm({
@@ -31,17 +33,13 @@ const form = useForm({
     max_budget_yuan: '',
     applicant_department_id: null as number | null,
     responsible_department: '',
-    steps: [
-        { role_code: 'department_head', assignee_id: null },
-        { role_code: 'procurement_manager', assignee_id: null },
-    ] as TemplateStep[],
+    assignees: { procurement_head: null as number | null, procurement_manager: null as number | null, asset_head: null as number | null },
 });
-
-function addStep() {
-    form.steps.push({ role_code: 'procurement_manager', assignee_id: null });
-}
-function removeStep(index: number) {
-    form.steps.splice(index, 1);
+const mapping = useForm({ department_id: null as number | null, supervising_leader_id: null as number | null, tender_group_representative_id: null as number | null });
+function selectDepartment(id: number | null) {
+    const saved = props.departmentApprovers.find((item) => item.department_id === id);
+    mapping.supervising_leader_id = saved?.supervising_leader_id ?? null;
+    mapping.tender_group_representative_id = saved?.tender_group_representative_id ?? null;
 }
 function save() {
     form.post('/procurement/approval-templates');
@@ -69,7 +67,7 @@ function save() {
             <p
                 class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
             >
-                按采购类型、金额和部门配置顺序审批。新版本仅影响之后提交的项目。
+                按采购类型、金额和部门配置流程适用条件。审批节点采用固定顺序，新版本仅影响之后提交的项目。
             </p>
         </header>
         <div
@@ -113,17 +111,7 @@ function save() {
                     <p
                         class="mt-[var(--brand-space-16)] text-xs text-[var(--brand-muted)]"
                     >
-                        {{
-                            template.steps
-                                .map(
-                                    (step) =>
-                                        roles.find(
-                                            (role) =>
-                                                role.code === step.role_code,
-                                        )?.name ?? step.role_code,
-                                )
-                                .join(' → ')
-                        }}
+                        部门负责人 → 经费负责人 → 采购管理部门领导 → 采购管理人员 → 资产管理部领导 → 经费分管院领导 → 招投标领导小组代表
                     </p>
                 </article>
             </section>
@@ -201,58 +189,13 @@ function save() {
                             v-model="form.responsible_department"
                             placeholder="留空表示不限"
                     /></label>
-                    <div
-                        class="border-t border-[var(--brand-primary)] pt-[var(--brand-space-16)]"
-                    >
-                        <p class="field-label">审批步骤</p>
-                        <div
-                            v-for="(step, index) in form.steps"
-                            :key="index"
-                            class="mt-[var(--brand-space-16)] rounded-[var(--brand-radius-md)] bg-[var(--brand-card)] p-[var(--brand-space-16)]"
-                        >
-                            <div class="flex items-center justify-between">
-                                <span
-                                    class="text-xs font-semibold text-[var(--brand-muted)]"
-                                    >第 {{ index + 1 }} 步</span
-                                ><button
-                                    type="button"
-                                    class="text-xs text-[var(--brand-danger)]"
-                                    @click="removeStep(index)"
-                                >
-                                    移除
-                                </button>
-                            </div>
-                            <el-select
-                                v-model="step.role_code"
-                                class="mt-[var(--brand-space-8)] w-full"
-                                ><el-option
-                                    v-for="role in roles"
-                                    :key="role.code"
-                                    :label="role.name"
-                                    :value="role.code" /></el-select
-                            ><el-select
-                                v-model="step.assignee_id"
-                                clearable
-                                filterable
-                                placeholder="按岗位自动匹配"
-                                class="mt-[var(--brand-space-8)] w-full"
-                                ><el-option
-                                    v-for="user in users"
-                                    :key="user.id"
-                                    :label="user.name"
-                                    :value="user.id"
-                            /></el-select>
-                        </div>
-                        <button
-                            type="button"
-                            class="mt-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-primary)]"
-                            @click="addStep"
-                        >
-                            ＋ 增加步骤</button
-                        ><span v-if="form.errors.steps" class="field-error">{{
-                            form.errors.steps
-                        }}</span>
-                    </div>
+                    <p class="text-sm text-[var(--brand-muted)]">节点顺序固定。请在人员管理中分配采购管理部门领导和资产管理部领导角色，并在下方配置部门审批人。</p>
+                    <label v-for="role in ['procurement_head', 'procurement_manager', 'asset_head'] as const" :key="role" class="block">
+                        <span class="field-label">{{ roles.find((item) => item.code === role)?.name ?? role }}（选填）</span>
+                        <el-select v-model="form.assignees[role]" clearable filterable placeholder="按角色自动匹配唯一人员" class="w-full">
+                            <el-option v-for="user in users" :key="user.id" :label="user.name" :value="user.id" />
+                        </el-select>
+                    </label>
                     <el-button
                         native-type="submit"
                         type="primary"
@@ -260,6 +203,20 @@ function save() {
                         class="w-full"
                         >保存新流程</el-button
                     >
+                </form>
+                <form class="mt-8 space-y-4 border-t border-[var(--brand-border)] pt-6" @submit.prevent="mapping.post('/procurement/department-approvers')">
+                    <h2 class="text-lg font-semibold text-[var(--brand-title)]">部门审批人映射</h2>
+                    <el-select v-model="mapping.department_id" filterable placeholder="选择申请人部门" class="w-full" @change="selectDepartment">
+                        <el-option v-for="department in departments" :key="department.id" :label="department.name" :value="department.id" />
+                    </el-select>
+                    <el-select v-model="mapping.supervising_leader_id" filterable placeholder="经费分管院领导" class="w-full">
+                        <el-option v-for="user in users" :key="user.id" :label="user.name" :value="user.id" />
+                    </el-select>
+                    <el-select v-model="mapping.tender_group_representative_id" filterable placeholder="招投标领导小组代表" class="w-full">
+                        <el-option v-for="user in users" :key="user.id" :label="user.name" :value="user.id" />
+                    </el-select>
+                    <p v-for="error in mapping.errors" :key="error" class="field-error">{{ error }}</p>
+                    <el-button native-type="submit" type="primary" :loading="mapping.processing" class="w-full">保存部门审批人</el-button>
                 </form>
             </section>
         </div>

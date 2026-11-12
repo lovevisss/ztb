@@ -82,6 +82,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('procurement/applications/{application}/execution', [ProcurementExecutionController::class, 'save'])->name('procurement.executions.save');
     Route::put('procurement/applications/{application}/executor', [ProcurementExecutionController::class, 'assign'])->name('procurement.executions.assign');
     Route::post('procurement/approval-templates', [ApprovalTemplateController::class, 'store'])->name('procurement.approval-templates.store');
+    Route::post('procurement/department-approvers', [ApprovalTemplateController::class, 'saveDepartmentApprover'])->name('procurement.department-approvers.store');
     Route::get('procurement/approvals', [ApprovalController::class, 'inbox'])->name('procurement.approvals.inbox');
     Route::get('procurement/approval-progress', [ApprovalController::class, 'progress'])->name('procurement.approvals.progress');
     Route::post('procurement/approvals/{step}/decision', [ApprovalController::class, 'decide'])->name('procurement.approvals.decide');

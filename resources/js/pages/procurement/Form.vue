@@ -19,6 +19,8 @@ const props = defineProps<{
     application: Application | null;
     departmentAssigned: boolean;
     threshold: number;
+    budgetIndicators: { id: number; code: string | null; name: string; director: string | null }[];
+    allocations: { budget_indicator_id: number; amount_cents: number }[];
 }>();
 const form = useForm({
     title: props.application?.title ?? '',
@@ -33,6 +35,7 @@ const form = useForm({
     reason: props.application?.reason ?? '',
     responsible_department: props.application?.responsible_department ?? '',
     is_fixed_asset: props.application?.is_fixed_asset ?? false,
+    allocations: props.allocations.map((item) => ({ budget_indicator_id: item.budget_indicator_id, amount: String(item.amount_cents / 100) })),
     intent: 'draft',
 });
 
@@ -96,6 +99,9 @@ function save(intent: 'draft' | 'submit') {
 
         <div v-if="['returned', 'withdrawn'].includes(application?.status ?? '')" class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-[var(--brand-space-16)] text-sm text-[var(--brand-warning)]">
             此申请{{ application?.status === 'withdrawn' ? '已撤回' : '已退回' }}。修改内容后可保存草稿，确认完成后点击“提交审核”，系统将从首环节开启新一轮审批。
+        </div>
+        <div v-if="Object.keys(form.errors).length" role="alert" class="mt-6 rounded-[var(--brand-radius-md)] border border-[var(--brand-danger)] p-4 text-sm text-[var(--brand-danger)]">
+            <p v-for="(message, field) in form.errors" :key="field">{{ message }}</p>
         </div>
 
         <div
@@ -231,6 +237,20 @@ function save(intent: 'draft' | 'submit') {
                             ></label
                         >
                     </div>
+                </section>
+                <section class="rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-[var(--brand-space-24)]">
+                    <h2 class="text-xl font-semibold text-[var(--brand-title)]">经费明细</h2>
+                    <p class="mt-2 text-sm text-[var(--brand-muted)]">提交时，经费金额合计须等于项目预算。</p>
+                    <div v-for="(allocation, index) in form.allocations" :key="index" class="mt-4 grid gap-4 sm:grid-cols-[1fr_10rem_auto]">
+                        <select v-model.number="allocation.budget_indicator_id" class="field-input" :aria-label="`第 ${index + 1} 条经费`">
+                            <option :value="0">选择经费代码</option>
+                            <option v-for="indicator in budgetIndicators" :key="indicator.id" :value="indicator.id">{{ indicator.code }} · {{ indicator.name }} · {{ indicator.director ?? '无负责人' }}</option>
+                        </select>
+                        <input v-model="allocation.amount" class="field-input" type="number" min="0.01" step="0.01" :aria-label="`第 ${index + 1} 条金额`" placeholder="金额（元）" />
+                        <button type="button" class="text-sm text-[var(--brand-danger)]" @click="form.allocations.splice(index, 1)">删除</button>
+                    </div>
+                    <button type="button" class="mt-4 text-sm font-medium text-[var(--brand-primary)]" @click="form.allocations.push({ budget_indicator_id: 0, amount: '' })">＋ 添加经费</button>
+                    <p v-if="form.errors.allocations" class="field-error">{{ form.errors.allocations }}</p>
                 </section>
                 <div class="flex flex-wrap gap-[var(--brand-space-16)]">
                     <button

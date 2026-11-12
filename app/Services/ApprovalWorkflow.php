@@ -31,32 +31,56 @@ class ApprovalWorkflow
             throw ValidationException::withMessages(['budget' => '当前项目没有可用的审批流程，请联系采购管理部门。']);
         }
 
-        $templateSteps = DB::table('approval_template_steps')->where('template_id', $template->id)->orderBy('position')->get();
-        if ($templateSteps->isEmpty()) {
-            throw ValidationException::withMessages(['budget' => '审批流程尚未配置审批节点。']);
-        }
-
         $resolved = [];
-        foreach ($templateSteps as $step) {
-            $assigneeId = $step->assignee_id ?? $this->resolveAssignee($step->role_code, $application);
-            if ($assigneeId === null || ! DB::table('users')->where('id', $assigneeId)->where('is_active', true)->exists()) {
-                throw ValidationException::withMessages(['budget' => "审批岗位 {$step->role_code} 尚无匹配人员，请联系管理员。"]);
+        if ($application->application_form === 'central_tender' && $application->has_usage_department && $application->usage_department_id !== null) {
+            $resolved[] = ['role_code' => 'usage_department_head', 'assignee_id' => $this->roleUser('department_head', $application->usage_department_id)];
+        }
+        $resolved[] = ['role_code' => 'department_head', 'assignee_id' => $this->roleUser('department_head', $application->department_id)];
+
+        $allocations = DB::table('procurement_budget_allocations')->where('application_id', $application->id)
+            ->orderBy('id')->get(['name', 'charge_sno']);
+        if ($allocations->isEmpty()) {
+            throw ValidationException::withMessages(['allocations' => '请先填写经费代码及金额明细。']);
+        }
+        foreach ($allocations as $allocation) {
+            $account = trim((string) $allocation->charge_sno);
+            $userId = $account === '' ? null : DB::table('users')->where('school_account', $account)
+                ->where('is_active', true)->value('id');
+            if ($userId === null) {
+                throw ValidationException::withMessages(['allocations' => "经费「{$allocation->name}」的负责人缺少有效工号或系统账号。"]);
             }
-            $resolved[] = ['position' => $step->position, 'role_code' => $step->role_code, 'assignee_id' => $assigneeId];
+            $resolved[] = ['role_code' => 'budget_director', 'assignee_id' => (int) $userId];
+        }
+        foreach (['procurement_head', 'procurement_manager', 'asset_head'] as $role) {
+            $configured = DB::table('approval_template_steps')->where('template_id', $template->id)
+                ->where('role_code', $role)->value('assignee_id');
+            if ($configured !== null && ! DB::table('users')->where('id', $configured)->where('is_active', true)->exists()) {
+                throw ValidationException::withMessages(['approvers' => "审批岗位 {$role} 的配置账号已停用。"]);
+            }
+            $resolved[] = ['role_code' => $role, 'assignee_id' => $configured === null ? $this->roleUser($role) : (int) $configured];
+        }
+        $mapping = DB::table('procurement_department_approvers')->where('department_id', $application->department_id)->first();
+        if ($mapping === null) {
+            throw ValidationException::withMessages(['department_id' => '申请人所在部门尚未配置经费分管院领导及招投标领导小组代表。']);
+        }
+        foreach (['supervising_leader_id' => 'supervising_leader', 'tender_group_representative_id' => 'tender_group_representative'] as $field => $role) {
+            $id = $mapping->{$field};
+            if (! DB::table('users')->where('id', $id)->where('is_active', true)->exists()) {
+                throw ValidationException::withMessages(['department_id' => '部门审批映射中存在无效账号，请联系管理员。']);
+            }
+            $resolved[] = ['role_code' => $role, 'assignee_id' => (int) $id];
         }
 
-        if ($application->application_form === 'central_tender' && $application->has_usage_department && $application->usage_department_id !== null) {
-            $head = DB::table('users')->join('role_user', 'role_user.user_id', '=', 'users.id')
-                ->join('roles', 'roles.id', '=', 'role_user.role_id')
-                ->where('roles.code', 'department_head')->where('users.department_id', $application->usage_department_id)
-                ->where('users.is_active', true)->orderBy('users.id')->value('users.id');
-            if ($head === null) {
-                throw ValidationException::withMessages(['usage_department_id' => '使用部门尚无有效负责人，请联系管理员。']);
+        $seen = [];
+        $skipped = [];
+        $resolved = array_values(array_filter($resolved, function (array $step) use (&$seen, &$skipped) {
+            if (isset($seen[$step['assignee_id']])) {
+                $skipped[] = $step['role_code'].'：与 '.$seen[$step['assignee_id']].' 为同一审批人，已跳过';
+                return false;
             }
-            if ((int) $head !== $resolved[0]['assignee_id']) {
-                array_unshift($resolved, ['position' => 0, 'role_code' => 'usage_department_head', 'assignee_id' => (int) $head]);
-            }
-        }
+            $seen[$step['assignee_id']] = $step['role_code'];
+            return true;
+        }));
 
         $attempt = $application->approval_attempt + 1;
         $application->update([
@@ -88,9 +112,16 @@ class ApprovalWorkflow
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        foreach ($skipped as $detail) {
+            DB::table('approval_events')->insert([
+                'application_id' => $application->id, 'actor_id' => $application->applicant_id,
+                'event' => 'duplicate_skipped', 'details' => $detail,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
     }
 
-    private function resolveAssignee(string $roleCode, ProcurementApplication $application): ?int
+    private function roleUser(string $roleCode, ?int $departmentId = null): int
     {
         $query = DB::table('users')
             ->join('role_user', 'role_user.user_id', '=', 'users.id')
@@ -98,15 +129,16 @@ class ApprovalWorkflow
             ->where('roles.code', $roleCode)
             ->where('users.is_active', true);
 
-        if ($roleCode === 'department_head') {
-            $query->where('users.department_id', $application->department_id);
-        } elseif ($roleCode === 'responsible_department') {
-            $query->join('departments', 'departments.id', '=', 'users.department_id')
-                ->where('departments.name', $application->responsible_department);
+        if ($departmentId !== null) {
+            $query->where('users.department_id', $departmentId);
         }
-
-        $id = $query->orderBy('users.id')->value('users.id');
-
-        return $id === null ? null : (int) $id;
+        $ids = $query->distinct()->pluck('users.id');
+        if ($roleCode === 'department_head' && $ids->isNotEmpty()) {
+            return (int) $ids->min();
+        }
+        if ($ids->count() !== 1) {
+            throw ValidationException::withMessages(['approvers' => "审批岗位 {$roleCode} 需要且只能配置一名有效人员。"]);
+        }
+        return (int) $ids->first();
     }
 }

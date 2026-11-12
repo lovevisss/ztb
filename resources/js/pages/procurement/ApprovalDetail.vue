@@ -169,7 +169,12 @@ const attachmentKindLabel: Record<string, string> = {
 const roleLabel: Record<string, string> = {
     department_head: '部门负责人',
     usage_department_head: '使用部门负责人',
+    budget_director: '经费负责人',
+    procurement_head: '采购管理部门领导',
     procurement_manager: '采购管理部门',
+    asset_head: '资产管理部领导',
+    supervising_leader: '经费分管院领导',
+    tender_group_representative: '招投标领导小组代表',
     responsible_department: '归口部门',
     finance: '财务人员',
     school_leader: '校领导',
@@ -190,7 +195,7 @@ const statusLabel: Record<string, string> = {
 };
 const eventLabel: Record<string, string> = {
     submitted: '提交申请', resubmitted: '重新提交', approved: '审批通过',
-    returned: '退回修改', withdrawn: '经办人撤回', rejected: '驳回申请', reassigned: '调整审批人',
+    returned: '退回修改', withdrawn: '经办人撤回', rejected: '驳回申请', reassigned: '调整审批人', duplicate_skipped: '重复审批人已跳过',
 };
 const editHref = computed(() => ['returned', 'withdrawn'].includes(props.application.status) && props.application.applicant_id === props.currentUserId
     ? props.application.application_form === 'central_tender'

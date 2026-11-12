@@ -175,8 +175,12 @@ function save(section: Tab | 'engineering') {
 }
 function submit() {
     if (!props.application) return;
-    router.post(`/procurement/tenders/${props.application.id}/submit`, {}, { preserveScroll: true });
+    router.post(`/procurement/tenders/${props.application.id}/submit`, {}, {
+        preserveScroll: true,
+        onError: (errors) => { submissionErrors.value = Object.values(errors).map(String); },
+    });
 }
+const submissionErrors = ref<string[]>([]);
 const activeSaving = computed(() => basic.processing || itemForm.processing || engineeringForm.processing || budgetForm.processing || attachmentForm.processing);
 function saveCurrentSection() {
     save(tab.value === 'items' && basic.category === '工程类' ? 'engineering' : tab.value);
@@ -266,6 +270,7 @@ const importError = ref('');
         </header>
         <div v-if="!application" class="number-notice mb-6 flex items-start gap-3 rounded-[var(--brand-radius-md)] border p-4 text-sm" role="note"><span aria-hidden="true" class="font-bold">i</span><p><strong>项目编号自动生成</strong><br><span class="text-xs">首次保存任一模块后，系统将自动生成项目编号。</span></p></div>
         <div v-if="['returned', 'withdrawn'].includes(application?.status ?? '')" class="mb-5 rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-4 text-sm text-[var(--brand-warning)]">此申请{{ application?.status === 'withdrawn' ? '已撤回' : '已退回' }}。请分别保存修改过的页签，再点击底部“提交审核”，系统将从首环节开启新一轮审批。</div>
+        <div v-if="submissionErrors.length" role="alert" class="mb-5 rounded-[var(--brand-radius-md)] border border-[var(--brand-danger)] p-4 text-sm text-[var(--brand-danger)]"><p v-for="(message, index) in submissionErrors" :key="index">{{ message }}</p></div>
         <div v-if="!departmentAssigned" class="mb-5 rounded border border-[var(--brand-warning)] p-4 text-[var(--brand-warning)]">当前账号尚未关联部门，请联系管理员。</div>
         <nav class="section-nav mb-6 flex gap-2 overflow-x-auto border-b border-[var(--brand-border)] bg-[var(--brand-card)]" aria-label="申请内容定位">
             <a v-for="entry in tabs" :key="entry.key" :href="`#${entry.key}`" :aria-current="tab === entry.key ? 'location' : undefined" class="shrink-0 border-b-2 px-4 py-3 text-sm" :class="tab === entry.key ? 'border-[var(--brand-primary)] font-semibold text-[var(--brand-primary)]' : 'border-transparent text-[var(--brand-muted)] hover:text-[var(--brand-primary)]'" @click.prevent="scrollToSection(entry.key)">{{ entry.label }}</a>

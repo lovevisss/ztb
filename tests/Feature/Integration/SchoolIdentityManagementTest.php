@@ -68,7 +68,7 @@ class SchoolIdentityManagementTest extends TestCase
             'manual_role_codes' => ['department_head'],
         ])->assertForbidden();
         $this->actingAs($admin)->get(route('school-identities.index'))
-            ->assertInertia(fn ($page) => $page->has('roles', 7)->has('users.data', 4));
+            ->assertInertia(fn ($page) => $page->has('roles', 9)->has('users.data', 4));
 
         $payload = ['manual_role_codes' => ['department_head', 'finance']];
         $this->actingAs($admin)->put(route('school-identities.roles.update', $staff), $payload)

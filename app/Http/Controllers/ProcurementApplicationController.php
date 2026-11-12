@@ -110,6 +110,8 @@ class ProcurementApplicationController extends Controller
             'application' => null,
             'departmentAssigned' => $request->user()->department_id !== null,
             'threshold' => ProcurementClassificationRule::effectiveFor($request->user()->department_id)->threshold_cents / 100,
+            'budgetIndicators' => DB::table('budget_indicators')->where('source', 'school_source')->where('status', '1')->orderBy('name')->get(['id', 'code', 'name', 'director']),
+            'allocations' => [],
         ]);
     }
 
@@ -122,6 +124,8 @@ class ProcurementApplicationController extends Controller
             'application' => $application,
             'departmentAssigned' => $request->user()->department_id !== null,
             'threshold' => ProcurementClassificationRule::effectiveFor($request->user()->department_id)->threshold_cents / 100,
+            'budgetIndicators' => DB::table('budget_indicators')->where('source', 'school_source')->where('status', '1')->orderBy('name')->get(['id', 'code', 'name', 'director']),
+            'allocations' => DB::table('procurement_budget_allocations')->where('application_id', $application->id)->get(['budget_indicator_id', 'amount_cents']),
         ]);
     }
 
@@ -139,6 +143,8 @@ class ProcurementApplicationController extends Controller
                 'department_id' => $request->user()->department_id,
             ]);
 
+            $this->saveAllocations($application, $data['allocations'] ?? []);
+
             $this->submitIfRequested($application, $request, $workflow);
 
             return $application;
@@ -154,13 +160,16 @@ class ProcurementApplicationController extends Controller
         abort_unless($application->applicant_id === $request->user()->id, 403);
         abort_unless(in_array($application->status, ['draft', 'returned', 'withdrawn'], true) && $application->application_form === 'self_purchase', 403);
 
-        $data = $this->validatedData($request);
+        $data = $this->validatedData($request, $application);
         $this->validateSelfPurchaseBudget($request, $data, $application->department_id);
         DB::transaction(function () use ($application, $data, $request, $workflow) {
             $locked = ProcurementApplication::query()->lockForUpdate()->findOrFail($application->id);
             abort_unless($locked->applicant_id === $request->user()->id && $locked->application_form === 'self_purchase'
                 && in_array($locked->status, ['draft', 'returned', 'withdrawn'], true), 403);
             $locked->update($data);
+            if (array_key_exists('allocations', $data)) {
+                $this->saveAllocations($locked, $data['allocations']);
+            }
             $this->submitIfRequested($locked, $request, $workflow);
         });
 
@@ -168,12 +177,15 @@ class ProcurementApplicationController extends Controller
     }
 
     /** @return array<string, string|int|bool|null> */
-    private function validatedData(Request $request): array
+    private function validatedData(Request $request, ?ProcurementApplication $application = null): array
     {
         $intent = $request->validate(['intent' => ['required', 'in:draft,submit']])['intent'];
         $required = $intent === 'submit' ? 'required' : 'nullable';
 
         $data = $request->validate([
+            'allocations' => ['sometimes', 'array', 'max:100'],
+            'allocations.*.budget_indicator_id' => ['required', 'integer', 'distinct', 'exists:budget_indicators,id'],
+            'allocations.*.amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
             'title' => [$required, 'string', 'max:255'],
             'budget' => [$required, 'numeric', 'min:0.01', 'decimal:0,2'],
             'funding_source' => [$required, 'string', 'max:255'],
@@ -185,9 +197,36 @@ class ProcurementApplicationController extends Controller
         ]);
 
         $data['budget_cents'] = isset($data['budget']) ? (int) round((float) $data['budget'] * 100) : null;
+        if ($intent === 'submit') {
+            $total = array_key_exists('allocations', $data)
+                ? array_sum(array_map(fn ($item) => (int) round((float) $item['amount'] * 100), $data['allocations']))
+                : ($application === null ? 0 : (int) DB::table('procurement_budget_allocations')->where('application_id', $application->id)->sum('amount_cents'));
+            if ($total <= 0 || $total !== $data['budget_cents']) {
+                throw ValidationException::withMessages(['allocations' => '经费明细金额合计必须等于项目预算。']);
+            }
+        }
         unset($data['budget']);
 
         return $data;
+    }
+
+    private function saveAllocations(ProcurementApplication $application, array $allocations): void
+    {
+        DB::table('procurement_budget_allocations')->where('application_id', $application->id)->delete();
+        foreach ($allocations as $allocation) {
+            $indicator = DB::table('budget_indicators')->where('id', $allocation['budget_indicator_id'])
+                ->where('source', 'school_source')->where('status', '1')->first();
+            if ($indicator === null) {
+                throw ValidationException::withMessages(['allocations' => '请选择有效的经费代码。']);
+            }
+            DB::table('procurement_budget_allocations')->insert([
+                'application_id' => $application->id, 'budget_indicator_id' => $indicator->id,
+                'code' => $indicator->code, 'name' => $indicator->name,
+                'director' => $indicator->director, 'charge_sno' => $indicator->charge_sno,
+                'amount_cents' => (int) round((float) $allocation['amount'] * 100),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
     }
 
     private function submitIfRequested(ProcurementApplication $application, Request $request, ApprovalWorkflow $workflow): void

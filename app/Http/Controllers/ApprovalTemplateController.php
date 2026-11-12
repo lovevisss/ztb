@@ -6,7 +6,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,7 +23,8 @@ class ApprovalTemplateController extends Controller
             }),
             'departments' => DB::table('departments')->orderBy('name')->get(['id', 'name']),
             'users' => DB::table('users')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'department_id']),
-            'roles' => DB::table('roles')->whereIn('code', ['department_head', 'procurement_manager', 'responsible_department', 'finance', 'school_leader'])->get(['code', 'name']),
+            'roles' => DB::table('roles')->whereIn('code', ['department_head', 'budget_director', 'procurement_head', 'procurement_manager', 'asset_head', 'supervising_leader', 'tender_group_representative'])->get(['code', 'name']),
+            'departmentApprovers' => DB::table('procurement_department_approvers')->get(),
         ]);
     }
 
@@ -39,21 +39,11 @@ class ApprovalTemplateController extends Controller
             'max_budget_yuan' => ['nullable', 'numeric', 'gt:min_budget_yuan', 'decimal:0,2'],
             'applicant_department_id' => ['nullable', 'exists:departments,id'],
             'responsible_department' => ['nullable', 'string', 'max:255'],
-            'steps' => ['required', 'array', 'min:1', 'max:10'],
-            'steps.*.role_code' => ['required', 'exists:roles,code'],
-            'steps.*.assignee_id' => ['nullable', Rule::exists('users', 'id')->where('is_active', true)],
+            'assignees' => ['sometimes', 'array'],
+            'assignees.procurement_head' => ['nullable', Rule::exists('users', 'id')->where('is_active', true)],
+            'assignees.procurement_manager' => ['nullable', Rule::exists('users', 'id')->where('is_active', true)],
+            'assignees.asset_head' => ['nullable', Rule::exists('users', 'id')->where('is_active', true)],
         ]);
-
-        $hasProcurementReview = false;
-        foreach ($data['steps'] as $step) {
-            if ($step['role_code'] === 'procurement_manager') {
-                $hasProcurementReview = true;
-                break;
-            }
-        }
-        if (! $hasProcurementReview) {
-            throw ValidationException::withMessages(['steps' => '审批流程必须包含采购管理部门审核节点。']);
-        }
 
         $templateId = DB::transaction(function () use ($request, $data) {
             $version = (int) DB::table('approval_templates')->where('purchase_type', $data['purchase_type'])->max('version') + 1;
@@ -70,13 +60,10 @@ class ApprovalTemplateController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-
-            foreach ($data['steps'] as $index => $step) {
+            foreach (['procurement_head', 'procurement_manager', 'asset_head'] as $position => $role) {
                 DB::table('approval_template_steps')->insert([
-                    'template_id' => $templateId,
-                    'position' => $index + 1,
-                    'role_code' => $step['role_code'],
-                    'assignee_id' => $step['assignee_id'] ?? null,
+                    'template_id' => $templateId, 'position' => $position + 1,
+                    'role_code' => $role, 'assignee_id' => $data['assignees'][$role] ?? null,
                 ]);
             }
 
@@ -85,6 +72,23 @@ class ApprovalTemplateController extends Controller
         $request->attributes->set('audit_subject', ['type' => 'approval_template', 'id' => (string) $templateId,
             'label' => $data['name']]);
 
+        return to_route('procurement.approval-templates.index');
+    }
+
+    public function saveDepartmentApprover(Request $request): RedirectResponse
+    {
+        $this->authorizeManager($request);
+        $data = $request->validate([
+            'department_id' => ['required', 'exists:departments,id'],
+            'supervising_leader_id' => ['required', Rule::exists('users', 'id')->where('is_active', true)],
+            'tender_group_representative_id' => ['required', Rule::exists('users', 'id')->where('is_active', true)],
+        ]);
+        DB::table('procurement_department_approvers')->updateOrInsert(
+            ['department_id' => $data['department_id']],
+            ['supervising_leader_id' => $data['supervising_leader_id'],
+                'tender_group_representative_id' => $data['tender_group_representative_id'],
+                'created_at' => now(), 'updated_at' => now()],
+        );
         return to_route('procurement.approval-templates.index');
     }
 

@@ -34,14 +34,108 @@ class ApprovalWorkflowTest extends TestCase
 
     private function submit(User $applicant, int $budget = 90000): int
     {
+        $headId = DB::table('users')->join('role_user', 'role_user.user_id', '=', 'users.id')
+            ->join('roles', 'roles.id', '=', 'role_user.role_id')
+            ->where('users.department_id', $applicant->department_id)
+            ->where('roles.code', 'department_head')->min('users.id');
+        $managerId = DB::table('role_user')->join('roles', 'roles.id', '=', 'role_user.role_id')
+            ->where('roles.code', 'procurement_manager')->min('role_user.user_id');
+        if ($headId !== null && $managerId !== null) {
+            DB::table('users')->where('id', $headId)->update(['school_account' => 'WORKFLOW-HEAD-'.$headId]);
+            foreach (['procurement_head', 'asset_head'] as $role) {
+                DB::table('role_user')->updateOrInsert([
+                    'user_id' => $headId, 'role_id' => DB::table('roles')->where('code', $role)->value('id'),
+                ]);
+            }
+            DB::table('procurement_department_approvers')->updateOrInsert(
+                ['department_id' => $applicant->department_id],
+                ['supervising_leader_id' => $headId, 'tender_group_representative_id' => $managerId,
+                    'created_at' => now(), 'updated_at' => now()],
+            );
+        }
+        $indicator = DB::table('budget_indicators')->insertGetId([
+            'source_id' => 'TEST-'.DB::table('budget_indicators')->count(), 'source' => 'school_source',
+            'code' => 'TEST', 'name' => '测试经费', 'charge_sno' => $headId === null ? null : 'WORKFLOW-HEAD-'.$headId,
+            'status' => '1', 'created_at' => now(), 'updated_at' => now(),
+        ]);
         $this->actingAs($applicant)->post(route('procurement.applications.store'), [
             'intent' => 'submit', 'title' => '教学设备采购', 'budget' => $budget,
             'funding_source' => '教学经费', 'organization_form' => '部门自行组织',
             'purchase_method' => '询价', 'reason' => '教学需要',
             'responsible_department' => '教务处', 'is_fixed_asset' => false,
+            'allocations' => [['budget_indicator_id' => $indicator, 'amount' => $budget]],
         ])->assertRedirect()->assertSessionHasNoErrors();
 
         return (int) DB::table('procurement_applications')->max('id');
+    }
+
+    public function test_new_workflow_orders_budget_directors_and_skips_repeat_approvers(): void
+    {
+        $department = $this->department();
+        $applicant = $this->user($department);
+        $head = $this->user($department, 'department_head');
+        $otherDirector = $this->user($department);
+        $otherDirector->update(['school_account' => 'D002']);
+        $head->update(['school_account' => 'D001']);
+        $procurementHead = $this->user($department, 'procurement_head');
+        $manager = $this->user($department, 'procurement_manager');
+        $assetHead = $this->user($department, 'asset_head');
+        $supervisor = $this->user($department);
+        $group = $this->user($department);
+        DB::table('procurement_department_approvers')->insert([
+            'department_id' => $department, 'supervising_leader_id' => $supervisor->id,
+            'tender_group_representative_id' => $group->id, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $application = ProcurementApplication::create([
+            'applicant_id' => $applicant->id, 'department_id' => $department,
+            'application_form' => 'self_purchase', 'purchase_type' => 'self_purchase',
+            'title' => '测试项目', 'budget_cents' => 30000, 'status' => 'draft',
+        ]);
+        foreach ([['A', 'D001'], ['B', 'D002'], ['C', 'D002']] as [$code, $account]) {
+            $indicator = DB::table('budget_indicators')->insertGetId([
+                'source_id' => $code, 'source' => 'school_source', 'code' => $code,
+                'name' => $code, 'charge_sno' => $account, 'status' => '1',
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            DB::table('procurement_budget_allocations')->insert([
+                'application_id' => $application->id, 'budget_indicator_id' => $indicator,
+                'code' => $code, 'name' => $code, 'charge_sno' => $account,
+                'amount_cents' => 10000, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        app(ApprovalWorkflow::class)->start($application);
+        $steps = DB::table('approval_steps')->where('application_id', $application->id)->orderBy('position')->pluck('assignee_id')->all();
+        $this->assertSame([$head->id, $otherDirector->id, $procurementHead->id, $manager->id, $assetHead->id, $supervisor->id, $group->id], $steps);
+        $this->assertDatabaseCount('approval_events', 3);
+
+        DB::table('procurement_budget_allocations')->where('application_id', $application->id)
+            ->where('code', 'B')->update(['charge_sno' => 'UNKNOWN']);
+        try {
+            app(ApprovalWorkflow::class)->start($application->fresh());
+            $this->fail('缺少有效经费负责人账号时应阻止新一轮审批');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('allocations', $exception->errors());
+        }
+    }
+
+    public function test_self_purchase_requires_budget_allocations_matching_the_budget(): void
+    {
+        $applicant = $this->user($this->department());
+        $indicator = DB::table('budget_indicators')->insertGetId([
+            'source_id' => 'TEST-1', 'source' => 'school_source', 'code' => 'TEST-1',
+            'name' => '测试经费', 'charge_sno' => 'D001', 'status' => '1',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $payload = [
+            'intent' => 'submit', 'title' => '教学设备采购', 'budget' => 900,
+            'funding_source' => '教学经费', 'organization_form' => '部门自行组织',
+            'purchase_method' => '询价', 'reason' => '教学需要',
+            'responsible_department' => '教务处', 'is_fixed_asset' => false,
+            'allocations' => [['budget_indicator_id' => $indicator, 'amount' => 800]],
+        ];
+        $this->actingAs($applicant)->post(route('procurement.applications.store'), $payload)
+            ->assertSessionHasErrors('allocations');
+        $this->assertDatabaseCount('procurement_applications', 0);
     }
 
     public function test_applicant_can_withdraw_mid_approval_and_restart_from_first_step(): void
