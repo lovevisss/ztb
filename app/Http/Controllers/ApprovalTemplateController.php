@@ -89,7 +89,9 @@ class ApprovalTemplateController extends Controller
                 'tender_group_representative_id' => $data['tender_group_representative_id'],
                 'created_at' => now(), 'updated_at' => now()],
         );
-        return to_route('procurement.approval-templates.index');
+        $request->attributes->set('audit_subject', ['type' => 'department', 'id' => (string) $data['department_id']]);
+
+        return back()->with('status', '部门审批人已保存。');
     }
 
     private function authorizeManager(Request $request): void

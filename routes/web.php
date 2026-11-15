@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\ApprovalTemplateController;
+use App\Http\Controllers\ApprovalAssigneeSettingsController;
 use App\Http\Controllers\CentralTenderApplicationController;
 use App\Http\Controllers\BudgetIndicatorController;
 use App\Http\Controllers\TenderSectionsController;
@@ -43,6 +44,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('admin/school-identities/{user}/roles', [SchoolIdentityController::class, 'updateRoles'])->name('school-identities.roles.update');
     Route::get('admin/department-heads', [DepartmentHeadController::class, 'index'])->name('department-heads.index');
     Route::put('admin/department-heads/{department}', [DepartmentHeadController::class, 'update'])->name('department-heads.update');
+    Route::get('admin/approval-assignees', [ApprovalAssigneeSettingsController::class, 'index'])->name('approval-assignees.index');
+    Route::put('admin/approval-assignees/{role}', [ApprovalAssigneeSettingsController::class, 'update'])->name('approval-assignees.update');
     Route::get('admin/organization', [SchoolOrganizationController::class, 'index'])->name('organization.index');
     Route::post('admin/organization/sync', [SchoolOrganizationController::class, 'sync'])->name('organization.sync');
     Route::put('admin/organization/positions/{code}/roles', [SchoolOrganizationController::class, 'updatePositionRoles'])->name('organization.position-roles.update');

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 
 type Application = {
     id: number;
@@ -22,6 +22,7 @@ const props = defineProps<{
     budgetIndicators: { id: number; code: string | null; name: string; director: string | null }[];
     allocations: { budget_indicator_id: number; amount_cents: number }[];
 }>();
+const page = usePage();
 const form = useForm({
     title: props.application?.title ?? '',
     budget:
@@ -102,6 +103,7 @@ function save(intent: 'draft' | 'submit') {
         </div>
         <div v-if="Object.keys(form.errors).length" role="alert" class="mt-6 rounded-[var(--brand-radius-md)] border border-[var(--brand-danger)] p-4 text-sm text-[var(--brand-danger)]">
             <p v-for="(message, field) in form.errors" :key="field">{{ message }}</p>
+            <Link v-if="Object.keys(form.errors).includes('approvers') && page.props.canManageSchoolUsers === true" href="/admin/approval-assignees" class="mt-2 inline-block font-semibold text-[var(--brand-primary)] underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">前往审批人配置</Link>
         </div>
 
         <div

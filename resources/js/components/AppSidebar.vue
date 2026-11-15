@@ -100,6 +100,11 @@ if (usePage().props.canManageSchoolUsers === true) {
         icon: IconUsers,
     });
     mainNavItems.push({
+        title: '其他审批人',
+        href: '/admin/approval-assignees',
+        icon: IconUsers,
+    });
+    mainNavItems.push({
         title: '组织同步',
         href: '/admin/organization',
         icon: IconHierarchy,

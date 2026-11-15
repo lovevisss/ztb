@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { reactive, ref, watch } from 'vue';
 
 type Department = {
@@ -22,6 +22,11 @@ const saving = reactive<Record<number, boolean>>({});
 const errors = reactive<Record<number, string>>({});
 function syncSelections() {
     for (const department of props.departments) selected[department.id] = department.manual_user_id;
+}
+function selectedUserName(value: unknown): string {
+    return props.users.find((user) => user.id === value)?.name
+        ?? props.departments.find((department) => department.manual_user_id === value)?.manual_user_name
+        ?? '';
 }
 syncSelections();
 watch(() => props.departments, syncSelections);
@@ -48,6 +53,10 @@ function save(department: Department, userId: number | null = selected[departmen
             <h1 class="text-[28px] font-semibold text-[var(--brand-title)]">部门负责人设置</h1>
             <p class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-muted)]">全局配置用于之后生成的采购审批。手动指定优先；未指定时按部门内 department_head 角色匹配。</p>
         </header>
+        <nav aria-label="审批人配置分类" class="mt-[var(--brand-space-24)] flex flex-wrap gap-[var(--brand-space-8)] border-b border-[var(--brand-border)]">
+            <span aria-current="page" class="rounded-t-[var(--brand-radius-md)] border-b-2 border-[var(--brand-primary)] px-4 py-3 text-sm font-semibold text-[var(--brand-primary)]">部门负责人</span>
+            <Link href="/admin/approval-assignees" class="rounded-t-[var(--brand-radius-md)] px-4 py-3 text-sm text-[var(--brand-body)] hover:text-[var(--brand-primary)] focus-visible:outline-2 focus-visible:outline-[var(--brand-primary)]">其他审批人</Link>
+        </nav>
 
         <div v-if="(page.props.flash as { status?: string } | undefined)?.status" role="status" class="mt-[var(--brand-space-24)] rounded-[var(--brand-radius-md)] border border-[var(--brand-success)] p-[var(--brand-space-16)] text-sm text-[var(--brand-success)]">
             {{ (page.props.flash as { status?: string }).status }}
@@ -67,6 +76,7 @@ function save(department: Department, userId: number | null = selected[departmen
                         <td class="p-4">{{ department.default_user_name ?? '未配置' }}</td>
                         <td class="p-4">
                             <el-select v-model="selected[department.id]" filterable clearable placeholder="按姓名、工号搜索" class="w-64">
+                                <template #label="{ value }">{{ selectedUserName(value) }}</template>
                                 <el-option v-for="user in users" :key="user.id" :label="`${user.name} · ${user.school_account ?? '无工号'} · ${user.department_name ?? '无部门'}`" :value="user.id" />
                             </el-select>
                             <p v-if="department.manual_user_id && !department.manual_user_active" class="mt-1 text-xs text-[var(--brand-danger)]">当前指定账号已停用，请更换或清除。</p>

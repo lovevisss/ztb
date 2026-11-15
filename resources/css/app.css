@@ -521,7 +521,7 @@
 .admin-content table tbody tr:hover {
     background: var(--brand-primary-light);
 }
-.admin-content input:not([type='checkbox']):not([type='radio']),
+.admin-content input:not([type='checkbox']):not([type='radio']):not(.el-select__input),
 .admin-content textarea,
 .admin-content select {
     border-color: var(--brand-border);
@@ -529,7 +529,7 @@
     background: var(--brand-card);
     color: var(--brand-body);
 }
-.admin-content input:disabled,
+.admin-content input:disabled:not(.el-select__input),
 .admin-content textarea:disabled,
 .admin-content select:disabled {
     background: var(--brand-soft);

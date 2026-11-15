@@ -55,9 +55,15 @@ class ApprovalWorkflow
             $configured = DB::table('approval_template_steps')->where('template_id', $template->id)
                 ->where('role_code', $role)->value('assignee_id');
             if ($configured !== null && ! DB::table('users')->where('id', $configured)->where('is_active', true)->exists()) {
-                throw ValidationException::withMessages(['approvers' => "审批岗位 {$role} 的配置账号已停用。"]);
+                throw ValidationException::withMessages(['approvers' => '审批岗位'.$this->roleName($role).'的流程指定账号已停用。']);
             }
-            $resolved[] = ['role_code' => $role, 'assignee_id' => $configured === null ? $this->roleUser($role) : (int) $configured];
+            $default = $configured === null
+                ? DB::table('approval_role_defaults')->where('role_code', $role)->value('user_id') : null;
+            if ($default !== null && ! DB::table('users')->where('id', $default)->where('is_active', true)->exists()) {
+                throw ValidationException::withMessages(['approvers' => '审批岗位'.$this->roleName($role).'的默认审批人账号已停用。']);
+            }
+            $resolved[] = ['role_code' => $role, 'assignee_id' => $configured !== null
+                ? (int) $configured : ($default !== null ? (int) $default : $this->roleUser($role))];
         }
         $mapping = DB::table('procurement_department_approvers')->where('department_id', $application->department_id)->first();
         if ($mapping === null) {
@@ -158,8 +164,19 @@ class ApprovalWorkflow
             return (int) $ids->min();
         }
         if ($ids->count() !== 1) {
-            throw ValidationException::withMessages(['approvers' => "审批岗位 {$roleCode} 需要且只能配置一名有效人员。"]);
+            $reason = $ids->isEmpty() ? '尚无有效人员' : '匹配到多名有效人员';
+            throw ValidationException::withMessages(['approvers' => '审批岗位'.$this->roleName($roleCode)."{$reason}，请联系管理员配置默认审批人。"]);
         }
         return (int) $ids->first();
+    }
+
+    private function roleName(string $roleCode): string
+    {
+        return match ($roleCode) {
+            'procurement_head' => '采购管理部门领导',
+            'procurement_manager' => '采购管理人员',
+            'asset_head' => '资产管理部领导',
+            default => $roleCode,
+        };
     }
 }
