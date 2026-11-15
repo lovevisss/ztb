@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { parseItemCsv, populateItemTemplate, validateItemRows } from '@/lib/procurement-item-import';
 import { canPreviewAttachment } from '@/lib/procurement-attachment';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -313,46 +314,59 @@ function toggleAttachmentDeletion(id: number) {
 function chooseEngineeringBill(event: Event) {
     engineeringForm.bill_file = (event.target as HTMLInputElement).files?.[0] ?? null;
 }
-async function importItems(event: Event) {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    try {
-        const ExcelJS = await import('exceljs');
-        const workbook = new ExcelJS.Workbook();
-        if (file.name.toLowerCase().endsWith('.csv')) {
-            const csv = await file.text();
-            const rows = csv.split(/\r?\n/).filter(Boolean).map((line) => {
-                const cells: string[] = [];
-                let value = ''; let quoted = false;
-                for (let i = 0; i < line.length; i++) {
-                    const char = line[i];
-                    if (char === '"' && quoted && line[i + 1] === '"') { value += '"'; i++; }
-                    else if (char === '"') quoted = !quoted;
-                    else if (char === ',' && !quoted) { cells.push(value); value = ''; }
-                    else value += char;
-                }
-                cells.push(value);
-                return cells;
-            });
-            const csvSheet = workbook.addWorksheet('导入');
-            for (const row of rows.slice(1)) csvSheet.addRow(row);
-        } else await workbook.xlsx.load(await file.arrayBuffer());
-        const sheet = workbook.worksheets[0];
-        if (!sheet) throw new Error('文件中没有工作表');
-        const imported: Item[] = [];
-        sheet.eachRow((row, rowNumber) => {
-            if (rowNumber === 1 && !file.name.toLowerCase().endsWith('.csv')) return;
-            const cell = (index: number) => String(row.getCell(index).text ?? '').trim();
-            if (!cell(1)) return;
-            imported.push({ name: cell(1), specification: cell(2), quantity: Number(cell(3)), unit_price: Number(cell(4)), unit: cell(5), remarks: cell(6) });
-        });
-        if (imported.some((item) => !Number.isFinite(item.quantity) || item.quantity <= 0 || !Number.isFinite(item.unit_price) || item.unit_price < 0)) throw new Error('数量或单价无效');
-        itemForm.items.push(...imported);
-        importError.value = '';
-    } catch (error) { importError.value = error instanceof Error ? error.message : '导入失败'; }
-    (event.target as HTMLInputElement).value = '';
-}
+const importingItems = ref(false);
+const downloadingTemplate = ref(false);
+const importSuccess = ref('');
 const importError = ref('');
+async function downloadItemTemplate() {
+    if (downloadingTemplate.value) return;
+    downloadingTemplate.value = true;
+    importError.value = '';
+    try {
+        const { Workbook } = await import('exceljs');
+        const workbook = new Workbook();
+        populateItemTemplate(workbook);
+        const buffer = await workbook.xlsx.writeBuffer();
+        const url = URL.createObjectURL(new Blob([new Uint8Array(buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = '采购清单导入模板.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch { importError.value = '模板下载失败，请重试。'; }
+    finally { downloadingTemplate.value = false; }
+}
+async function importItems(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || importingItems.value) return;
+    importingItems.value = true;
+    importError.value = '';
+    importSuccess.value = '';
+    try {
+        let rows: string[][];
+        if (file.name.toLowerCase().endsWith('.csv')) rows = parseItemCsv(await file.text());
+        else if (file.name.toLowerCase().endsWith('.xlsx')) {
+            const { Workbook } = await import('exceljs');
+            const workbook = new Workbook();
+            await workbook.xlsx.load(await file.arrayBuffer());
+            const sheet = workbook.worksheets[0];
+            if (!sheet) throw new Error('文件中没有工作表。');
+            rows = [];
+            for (let row = 1; row <= sheet.rowCount; row++) {
+                const values: string[] = [];
+                sheet.getRow(row).eachCell({ includeEmpty: true }, (cell, col) => { values[col - 1] = cell.text; });
+                rows.push(Array.from({ length: Math.max(6, values.length) }, (_, index) => values[index] ?? ''));
+            }
+        } else throw new Error('请选择 .xlsx 或 CSV 文件。');
+        const imported = validateItemRows(rows, itemForm.items.length);
+        itemForm.items.push(...imported);
+        importSuccess.value = `已导入${imported.length}项，请点击“保存采购清单”提交。`;
+    } catch (error) { importError.value = error instanceof Error ? error.message : '导入失败，请检查文件是否损坏。'; }
+    finally { importingItems.value = false; input.value = ''; }
+}
 </script>
 
 <template>
@@ -419,10 +433,12 @@ const importError = ref('');
                 <button type="button" class="action" @click="openItemEditor()">＋ 添加采购清单</button>
                 <select v-model="selectedCatalog" class="field max-w-56"><option value="">从个人物资库选择</option><option v-for="item in catalog" :key="item.id" :value="item.id">{{ item.name }}</option></select>
                 <button type="button" class="action" @click="addFromCatalog">抽取</button>
-                <label class="action cursor-pointer">导入 Excel/CSV<input type="file" accept=".xlsx,.csv" class="sr-only" @change="importItems" /></label>
+                <button type="button" class="action" :disabled="downloadingTemplate" @click="downloadItemTemplate">{{ downloadingTemplate ? '生成模板中…' : '下载导入模板' }}</button>
+                <label class="action cursor-pointer focus-within:outline-2 focus-within:outline-[var(--brand-primary)]">{{ importingItems ? '导入中…' : '导入 Excel/CSV' }}<input type="file" accept=".xlsx,.csv" class="sr-only" :disabled="importingItems || activeSaving" @change="importItems" /></label>
             </div>
-            <p class="mb-3 text-xs text-[var(--brand-muted)]">导入列顺序：货物名称、技术参数、数量、单价、单位、备注（首行为表头）。</p>
-            <p v-if="importError" class="error">{{ importError }}</p>
+            <p class="mb-3 text-xs text-[var(--brand-muted)]">请先下载模板。货物名称、数量、单价为必填项；合计最多500项，导入后追加到现有清单。</p>
+            <p v-if="importError" role="alert" class="error">{{ importError }}</p>
+            <p v-if="importSuccess" role="status" class="mb-3 text-sm text-[var(--brand-success)]">{{ importSuccess }}</p>
             <div v-if="Object.keys(itemForm.errors).length" role="alert" class="mb-4 rounded-[var(--brand-radius-md)] border border-[var(--brand-danger)] p-3 text-sm text-[var(--brand-danger)]">
                 <p>采购清单保存失败，请修改以下内容：</p>
                 <p v-for="(message, field) in itemForm.errors" :key="field">{{ message }}</p>
