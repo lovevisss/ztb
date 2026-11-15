@@ -29,6 +29,7 @@ const props = defineProps<{
     canSyncBudgets: boolean;
 }>();
 const page = usePage();
+const flashStatus = ref((page.props.flash as { status?: string } | undefined)?.status ?? '');
 
 type Tab = 'basic' | 'items' | 'budget' | 'attachments';
 const initialTab = typeof window === 'undefined' ? 'basic' : (window.location.hash.slice(1) || new URLSearchParams(window.location.search).get('tab'));
@@ -166,10 +167,55 @@ const money = (value: number) => value.toLocaleString('zh-CN', { minimumFraction
 const invalidMoney = (value: string | number) => value !== '' && (!Number.isFinite(Number(value)) || Number(value) < 0 || !/^\d+(?:\.\d{1,2})?$/.test(String(value)));
 const invalidQuantity = (value: string | number) => value !== '' && (!Number.isFinite(Number(value)) || Number(value) <= 0 || !/^\d+(?:\.\d{1,3})?$/.test(String(value)));
 
+type SaveSection = Tab | 'engineering';
+type SaveFeedback = { state: 'idle' | 'dirty' | 'saving' | 'saved' | 'error'; message: string; time: string | null };
+const saveFeedback = ref<Record<SaveSection, SaveFeedback>>({
+    basic: { state: 'idle', message: '', time: null },
+    items: { state: 'idle', message: '', time: null },
+    engineering: { state: 'idle', message: '', time: null },
+    budget: { state: 'idle', message: '', time: null },
+    attachments: { state: 'idle', message: '', time: null },
+});
+const savedLabels: Record<SaveSection, string> = {
+    basic: '基本信息', items: '采购清单', engineering: '工程清单', budget: '项目预算指标', attachments: '附件',
+};
+function markDirty(section: SaveSection) {
+    flashStatus.value = '';
+    saveFeedback.value[section] = { state: 'dirty', message: '有未保存的修改', time: null };
+}
+watch(() => basic.data(), () => markDirty('basic'), { deep: true });
+watch(() => itemForm.items, () => markDirty('items'), { deep: true });
+watch(() => engineeringForm.data(), () => markDirty('engineering'), { deep: true });
+watch(() => budgetForm.data(), () => markDirty('budget'), { deep: true });
+watch(() => attachmentForm.data(), () => markDirty('attachments'), { deep: true });
+function feedbackClass(section: SaveSection) {
+    return saveFeedback.value[section].state === 'error' ? 'text-[var(--brand-danger)]'
+        : saveFeedback.value[section].state === 'saved' ? 'text-[var(--brand-success)]' : 'text-[var(--brand-muted)]';
+}
+
 function blankItem(): Item { return { name: '', specification: '', quantity: 1, unit_price: 0, unit: '', remarks: '' }; }
 function save(section: Tab | 'engineering') {
+    if (activeSaving.value || !props.departmentAssigned) return;
     const form = section === 'basic' ? basic : section === 'items' ? itemForm : section === 'engineering' ? engineeringForm : section === 'budget' ? budgetForm : attachmentForm;
-    const options = { preserveScroll: true, onSuccess: () => { if (section === 'attachments') { attachmentForm.files = []; attachmentForm.delete_ids = []; if (attachmentInput.value) attachmentInput.value.value = ''; } if (section === 'engineering') engineeringForm.bill_file = null; } };
+    let resolved = false;
+    saveFeedback.value[section] = { state: 'saving', message: `${savedLabels[section]}保存中…`, time: null };
+    const options = {
+        preserveScroll: true,
+        onSuccess: async () => {
+            resolved = true;
+            if (section === 'attachments') { attachmentForm.files = []; attachmentForm.delete_ids = []; if (attachmentInput.value) attachmentInput.value.value = ''; }
+            if (section === 'engineering') engineeringForm.bill_file = null;
+            await nextTick();
+            saveFeedback.value[section] = { state: 'saved', message: `${savedLabels[section]}已保存`, time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) };
+        },
+        onError: (errors: Record<string, string>) => {
+            resolved = true;
+            saveFeedback.value[section] = { state: 'error', message: Object.values(errors)[0] ?? '保存失败，请检查输入后重试。', time: null };
+        },
+        onFinish: () => {
+            if (!resolved) saveFeedback.value[section] = { state: 'error', message: '保存未完成，请检查网络后重试。', time: null };
+        },
+    };
     if (props.application) form.post(`/procurement/tenders/${props.application.id}/sections`, options);
     else form.post('/procurement/tenders/sections', options);
 }
@@ -271,6 +317,7 @@ const importError = ref('');
         <div v-if="!application" class="number-notice mb-6 flex items-start gap-3 rounded-[var(--brand-radius-md)] border p-4 text-sm" role="note"><span aria-hidden="true" class="font-bold">i</span><p><strong>项目编号自动生成</strong><br><span class="text-xs">首次保存任一模块后，系统将自动生成项目编号。</span></p></div>
         <div v-if="['returned', 'withdrawn'].includes(application?.status ?? '')" class="mb-5 rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-4 text-sm text-[var(--brand-warning)]">此申请{{ application?.status === 'withdrawn' ? '已撤回' : '已退回' }}。请分别保存修改过的页签，再点击底部“提交审核”，系统将从首环节开启新一轮审批。</div>
         <div v-if="submissionErrors.length" role="alert" class="mb-5 rounded-[var(--brand-radius-md)] border border-[var(--brand-danger)] p-4 text-sm text-[var(--brand-danger)]"><p v-for="(message, index) in submissionErrors" :key="index">{{ message }}</p></div>
+        <div v-if="flashStatus" role="status" class="mb-5 rounded-[var(--brand-radius-md)] border border-[var(--brand-success)] bg-[var(--brand-soft)] p-4 text-sm text-[var(--brand-success)]">{{ flashStatus }}</div>
         <div v-if="!departmentAssigned" class="mb-5 rounded border border-[var(--brand-warning)] p-4 text-[var(--brand-warning)]">当前账号尚未关联部门，请联系管理员。</div>
         <nav class="section-nav mb-6 flex gap-2 overflow-x-auto border-b border-[var(--brand-border)] bg-[var(--brand-card)]" aria-label="申请内容定位">
             <a v-for="entry in tabs" :key="entry.key" :href="`#${entry.key}`" :aria-current="tab === entry.key ? 'location' : undefined" class="shrink-0 border-b-2 px-4 py-3 text-sm" :class="tab === entry.key ? 'border-[var(--brand-primary)] font-semibold text-[var(--brand-primary)]' : 'border-transparent text-[var(--brand-muted)] hover:text-[var(--brand-primary)]'" @click.prevent="scrollToSection(entry.key)">{{ entry.label }}</a>
@@ -302,7 +349,8 @@ const importError = ref('');
                     <label class="block"><span class="label">备注</span><textarea v-model="basic.remarks" class="field min-h-28" rows="4" /></label>
                 </div></div>
             </div>
-            <button type="button" class="save" :disabled="basic.processing || !departmentAssigned" @click="save('basic')">保存基本信息</button>
+            <button type="button" class="save" :disabled="activeSaving || !departmentAssigned" :aria-busy="basic.processing" @click="save('basic')">{{ basic.processing ? '保存中…' : '保存基本信息' }}</button>
+            <p v-if="saveFeedback.basic.state !== 'idle'" role="status" aria-live="polite" class="mt-3 text-center text-sm" :class="feedbackClass('basic')">{{ saveFeedback.basic.message }}<span v-if="saveFeedback.basic.time"> · {{ saveFeedback.basic.time }}</span></p>
         </section>
         <section v-if="basic.category === '工程类'" id="items" class="panel">
             <h2 class="section-title">采购清单 · 工程类</h2>
@@ -314,7 +362,8 @@ const importError = ref('');
                 <label class="block"><span class="label">工程总造价（元） <span class="required">*</span></span><input v-model="engineeringForm.estimated_cost" class="field" type="number" min="0" step="0.01" inputmode="decimal" /><small class="field-hint">金额保留两位小数</small><small v-if="invalidMoney(engineeringForm.estimated_cost)" class="error">请输入非负金额，最多保留两位小数。</small><small class="error">{{ engineeringForm.errors.estimated_cost }}</small></label>
                 <div><span class="label">清单附件 <span class="required">*</span></span><input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" @change="chooseEngineeringBill" /><small class="error">{{ engineeringForm.errors.bill_file }}</small><p v-if="engineeringBill" class="mt-2 flex flex-wrap items-center gap-[var(--brand-space-16)] text-sm"><span>已上传：{{ engineeringBill.original_name }}</span><a v-if="canPreviewAttachment(engineeringBill.mime_type)" :href="`/procurement/attachments/${engineeringBill.id}/preview`" target="_blank" rel="noopener noreferrer" class="text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">预览</a><a :href="`/procurement/attachments/${engineeringBill.id}/download`" class="text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]">下载</a></p></div>
             </div>
-            <button type="button" class="save" :disabled="engineeringForm.processing || !departmentAssigned" @click="save('engineering')">保存工程清单</button>
+            <button type="button" class="save" :disabled="activeSaving || !departmentAssigned" :aria-busy="engineeringForm.processing" @click="save('engineering')">{{ engineeringForm.processing ? '保存中…' : '保存工程清单' }}</button>
+            <p v-if="saveFeedback.engineering.state !== 'idle'" role="status" aria-live="polite" class="mt-3 text-center text-sm" :class="feedbackClass('engineering')">{{ saveFeedback.engineering.message }}<span v-if="saveFeedback.engineering.time"> · {{ saveFeedback.engineering.time }}</span></p>
         </section>
         <section v-else id="items" class="panel">
             <h2 class="section-title">采购清单</h2>
@@ -326,7 +375,10 @@ const importError = ref('');
             </div>
             <p class="mb-3 text-xs text-[var(--brand-muted)]">导入列顺序：货物名称、技术参数、数量、单价、单位、备注（首行为表头）。</p>
             <p v-if="importError" class="error">{{ importError }}</p>
-            <p v-if="itemForm.errors.items" class="error">{{ itemForm.errors.items }}</p>
+            <div v-if="Object.keys(itemForm.errors).length" role="alert" class="mb-4 rounded-[var(--brand-radius-md)] border border-[var(--brand-danger)] p-3 text-sm text-[var(--brand-danger)]">
+                <p>采购清单保存失败，请修改以下内容：</p>
+                <p v-for="(message, field) in itemForm.errors" :key="field">{{ message }}</p>
+            </div>
             <div class="space-y-4">
                 <div v-for="(item, index) in itemForm.items" :key="index" class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] p-4">
                     <div class="grid gap-3 md:grid-cols-3">
@@ -342,7 +394,8 @@ const importError = ref('');
                 </div>
             </div>
             <p class="mt-5 text-right font-semibold">合计：¥{{ money(total) }}</p>
-            <button type="button" class="save" :disabled="itemForm.processing || !departmentAssigned" @click="save('items')">保存采购清单</button>
+            <button type="button" class="save" :disabled="activeSaving || !departmentAssigned" :aria-busy="itemForm.processing" @click="save('items')">{{ itemForm.processing ? '保存中…' : '保存采购清单' }}</button>
+            <p v-if="saveFeedback.items.state !== 'idle'" role="status" aria-live="polite" class="mt-3 text-center text-sm" :class="saveFeedback.items.state === 'error' ? 'text-[var(--brand-danger)]' : saveFeedback.items.state === 'saved' ? 'text-[var(--brand-success)]' : 'text-[var(--brand-muted)]'">{{ saveFeedback.items.message }}<span v-if="saveFeedback.items.time"> · {{ saveFeedback.items.time }}</span></p>
             <div class="mt-8 border-t border-[var(--brand-border)] pt-6">
                 <h3 class="mb-3 font-semibold">我的物资库</h3>
                 <div class="grid gap-3 md:grid-cols-3"><input v-model="catalogForm.name" class="field" placeholder="商品名称" /><input v-model="catalogForm.specification" class="field" placeholder="技术参数" /><input v-model="catalogForm.unit" class="field" placeholder="单位" /><input v-model.number="catalogForm.unit_price" class="field" type="number" min="0" step="0.01" placeholder="单价" /><input v-model="catalogForm.remarks" class="field" placeholder="备注" /><button type="button" class="action" @click="addCatalog">{{ editingCatalogId ? '更新个人物资' : '保存到我的物资库' }}</button></div>
@@ -382,7 +435,8 @@ const importError = ref('');
                 <div class="mt-3 flex items-center justify-end gap-3 text-sm"><button type="button" :disabled="pickerPage <= 1 || pickerLoading" @click="searchIndicators(pickerPage - 1)">上一页</button><span>{{ pickerPage }} / {{ pickerLastPage }}</span><button type="button" :disabled="pickerPage >= pickerLastPage || pickerLoading" @click="searchIndicators(pickerPage + 1)">下一页</button></div>
             </div>
             <label><span class="label">预算测算说明</span><textarea v-model="budgetForm.budget_basis_note" class="field min-h-24" /></label>
-            <button type="button" class="save" :disabled="budgetForm.processing || !departmentAssigned" @click="save('budget')">保存预算指标</button>
+            <button type="button" class="save" :disabled="activeSaving || !departmentAssigned" :aria-busy="budgetForm.processing" @click="save('budget')">{{ budgetForm.processing ? '保存中…' : '保存预算指标' }}</button>
+            <p v-if="saveFeedback.budget.state !== 'idle'" role="status" aria-live="polite" class="mt-3 text-center text-sm" :class="feedbackClass('budget')">{{ saveFeedback.budget.message }}<span v-if="saveFeedback.budget.time"> · {{ saveFeedback.budget.time }}</span></p>
         </section>
         <section id="attachments" class="panel">
             <h2 class="section-title">附件</h2>
@@ -397,12 +451,13 @@ const importError = ref('');
             <p v-if="attachments.length" class="mt-[var(--brand-space-24)] text-sm font-semibold text-[var(--brand-title)]">已上传附件</p>
             <ul v-if="attachments.length" class="mt-[var(--brand-space-8)] divide-y divide-[var(--brand-border)] rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] px-[var(--brand-space-16)]"><li v-for="file in attachments" :key="file.id" class="flex flex-wrap items-center justify-between gap-[var(--brand-space-8)] py-[var(--brand-space-8)] text-sm"><span class="min-w-0 break-all" :class="attachmentForm.delete_ids.includes(file.id) ? 'text-[var(--brand-muted)] line-through' : 'text-[var(--brand-body)]'">{{ file.original_name }}</span><span class="flex items-center gap-[var(--brand-space-16)]"><span v-if="attachmentForm.delete_ids.includes(file.id)" class="text-[var(--brand-danger)]">待删除</span><a v-if="canPreviewAttachment(file.mime_type) && !attachmentForm.delete_ids.includes(file.id)" class="text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]" :href="`/procurement/attachments/${file.id}/preview`" target="_blank" rel="noopener noreferrer">预览</a><a v-if="!attachmentForm.delete_ids.includes(file.id)" class="text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]" :href="`/procurement/attachments/${file.id}/download`">下载</a><button type="button" :disabled="attachmentForm.processing" class="text-[var(--brand-danger)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-danger)]" @click="toggleAttachmentDeletion(file.id)">{{ attachmentForm.delete_ids.includes(file.id) ? '撤销' : '删除' }}</button></span></li></ul>
             <p v-if="attachmentForm.errors.delete_ids" class="error">{{ attachmentForm.errors.delete_ids }}</p>
-            <button type="button" class="save" :disabled="attachmentForm.processing || !departmentAssigned" @click="save('attachments')">保存附件</button>
+            <button type="button" class="save" :disabled="activeSaving || !departmentAssigned" :aria-busy="attachmentForm.processing" @click="save('attachments')">{{ attachmentForm.processing ? '保存中…' : '保存附件' }}</button>
+            <p v-if="saveFeedback.attachments.state !== 'idle'" role="status" aria-live="polite" class="mt-3 text-center text-sm" :class="feedbackClass('attachments')">{{ saveFeedback.attachments.message }}<span v-if="saveFeedback.attachments.time"> · {{ saveFeedback.attachments.time }}</span></p>
         </section>
         <div v-if="Object.keys(page.props.errors ?? {}).length" class="mt-6 rounded border border-[var(--brand-danger)] p-4 text-sm text-[var(--brand-danger)]"><p v-for="(message, key) in page.props.errors" :key="key">{{ message }}</p></div>
         <footer class="form-action-bar flex flex-wrap items-center justify-between gap-3 rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-3 shadow-[var(--brand-shadow)] md:px-6">
             <div class="text-xs text-[var(--brand-muted)]"><p>当前模块：{{ tabs.find((entry) => entry.key === tab)?.label }} · {{ application ? '各模块分别保存' : '先保存任一模块以生成草稿' }}</p><p v-if="total < threshold" class="text-[var(--brand-warning)]">统一招标金额门槛：¥{{ money(threshold) }}</p></div>
-            <div class="flex flex-wrap items-center gap-2"><Link href="/procurement/applications" class="action">返回申请列表</Link><button type="button" class="action" :disabled="activeSaving || !departmentAssigned" @click="saveCurrentSection">保存当前模块（草稿）</button><button type="button" class="save mt-0" :disabled="activeSaving || !departmentAssigned || !application" @click="submit">提交审核</button></div>
+            <div class="flex flex-wrap items-center gap-2"><Link href="/procurement/applications" class="action">返回申请列表</Link><button type="button" class="action" :disabled="activeSaving || !departmentAssigned" @click="saveCurrentSection">{{ activeSaving ? '保存中…' : '保存当前模块（草稿）' }}</button><button type="button" class="save mt-0" :disabled="activeSaving || !departmentAssigned || !application" @click="submit">提交审核</button></div>
         </footer>
     </main>
 </template>

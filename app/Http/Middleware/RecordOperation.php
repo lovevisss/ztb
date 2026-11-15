@@ -34,6 +34,7 @@ class RecordOperation
         'procurement.archive-rules.update' => ['configuration', 'archive_rule_updated', '修改归档规则'],
         'school-identities.update' => ['account', 'identity_updated', '修改校内账号'],
         'school-identities.roles.update' => ['account', 'roles_updated', '修改手动角色'],
+        'department-heads.update' => ['configuration', 'department_head_updated', '设置部门负责人'],
         'organization.sync' => ['account', 'organization_synced', '同步组织人员'],
         'organization.position-roles.update' => ['account', 'position_roles_updated', '修改岗位角色'],
         'profile.update' => ['account', 'profile_updated', '修改个人资料'],

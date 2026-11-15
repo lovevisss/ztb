@@ -85,13 +85,13 @@ class TenderSectionsTest extends TestCase
             'contact_phone' => '12345678901', 'is_special_purchase' => false,
             'is_non_expenditure' => false, 'has_usage_department' => false,
             'procurement_requirements' => '购置设备',
-        ])->assertRedirect();
+        ])->assertRedirect()->assertSessionHas('status', '基本信息已保存');
         $first = DB::table('procurement_applications')->first();
         $this->assertSame('CGSQ-'.now()->format('Ymd').'-0001', $first->project_number);
         $this->assertSame('设备采购', $first->title);
         $this->actingAs($user)->post(route('procurement.tenders.sections.update', $first->id), [
             'section' => 'items', 'items' => [['name' => '屏幕', 'quantity' => 2, 'unit_price' => 50000, 'unit' => '台']],
-        ])->assertRedirect();
+        ])->assertRedirect()->assertSessionHas('status', '采购清单已保存');
         $this->assertDatabaseHas('procurement_applications', ['id' => $first->id, 'title' => '设备采购', 'budget_cents' => 10_000_000]);
         $this->assertDatabaseHas('procurement_line_items', ['application_id' => $first->id, 'total_cents' => 10_000_000]);
         $this->actingAs($user)->post(route('procurement.tenders.sections.create'), [

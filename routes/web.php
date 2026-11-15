@@ -19,6 +19,7 @@ use App\Http\Controllers\ProcurementStatisticsController;
 use App\Http\Controllers\SchoolCasCallbackController;
 use App\Http\Controllers\SchoolCasLoginController;
 use App\Http\Controllers\SchoolIdentityController;
+use App\Http\Controllers\DepartmentHeadController;
 use App\Http\Controllers\SchoolOrganizationController;
 use App\Http\Middleware\EnsureCasConfigured;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -40,6 +41,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/school-identities', [SchoolIdentityController::class, 'index'])->name('school-identities.index');
     Route::put('admin/school-identities/{user}', [SchoolIdentityController::class, 'update'])->name('school-identities.update');
     Route::put('admin/school-identities/{user}/roles', [SchoolIdentityController::class, 'updateRoles'])->name('school-identities.roles.update');
+    Route::get('admin/department-heads', [DepartmentHeadController::class, 'index'])->name('department-heads.index');
+    Route::put('admin/department-heads/{department}', [DepartmentHeadController::class, 'update'])->name('department-heads.update');
     Route::get('admin/organization', [SchoolOrganizationController::class, 'index'])->name('organization.index');
     Route::post('admin/organization/sync', [SchoolOrganizationController::class, 'sync'])->name('organization.sync');
     Route::put('admin/organization/positions/{code}/roles', [SchoolOrganizationController::class, 'updatePositionRoles'])->name('organization.position-roles.update');

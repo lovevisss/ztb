@@ -33,9 +33,9 @@ class ApprovalWorkflow
 
         $resolved = [];
         if ($application->application_form === 'central_tender' && $application->has_usage_department && $application->usage_department_id !== null) {
-            $resolved[] = ['role_code' => 'usage_department_head', 'assignee_id' => $this->roleUser('department_head', $application->usage_department_id)];
+            $resolved[] = ['role_code' => 'usage_department_head', 'assignee_id' => $this->departmentHead($application->usage_department_id, '使用部门')];
         }
-        $resolved[] = ['role_code' => 'department_head', 'assignee_id' => $this->roleUser('department_head', $application->department_id)];
+        $resolved[] = ['role_code' => 'department_head', 'assignee_id' => $this->departmentHead($application->department_id, '申请部门')];
 
         $allocations = DB::table('procurement_budget_allocations')->where('application_id', $application->id)
             ->orderBy('id')->get(['name', 'charge_sno']);
@@ -119,6 +119,27 @@ class ApprovalWorkflow
                 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
+    }
+
+    private function departmentHead(int $departmentId, string $kind): int
+    {
+        $name = DB::table('departments')->where('id', $departmentId)->value('name') ?? (string) $departmentId;
+        $manual = DB::table('department_head_assignments')->where('department_id', $departmentId)->value('user_id');
+        if ($manual !== null) {
+            if (! DB::table('users')->where('id', $manual)->where('is_active', true)->exists()) {
+                throw ValidationException::withMessages(['approvers' => "{$kind}「{$name}」手动指定的负责人账号已停用，请联系管理员。"]);
+            }
+            return (int) $manual;
+        }
+
+        $id = DB::table('users')->join('role_user', 'role_user.user_id', '=', 'users.id')
+            ->join('roles', 'roles.id', '=', 'role_user.role_id')
+            ->where('roles.code', 'department_head')->where('users.is_active', true)
+            ->where('users.department_id', $departmentId)->min('users.id');
+        if ($id === null) {
+            throw ValidationException::withMessages(['approvers' => "{$kind}「{$name}」尚未配置有效负责人，请联系管理员在“部门负责人”中设置。"]);
+        }
+        return (int) $id;
     }
 
     private function roleUser(string $roleCode, ?int $departmentId = null): int

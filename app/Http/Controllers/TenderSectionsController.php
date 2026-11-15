@@ -48,7 +48,8 @@ class TenderSectionsController extends Controller
         $request->attributes->set('audit_subject', ['type' => 'application', 'id' => (string) $application->id,
             'label' => $application->project_number ?? $application->title]);
 
-        return to_route('procurement.tenders.edit', ['application' => $application->id, 'tab' => $section === 'engineering' ? 'items' : $section]);
+        return to_route('procurement.tenders.edit', ['application' => $application->id, 'tab' => $section === 'engineering' ? 'items' : $section])
+            ->with('status', $this->savedMessage($section));
     }
 
     public function update(Request $request, ProcurementApplication $application): RedirectResponse
@@ -70,7 +71,19 @@ class TenderSectionsController extends Controller
         }
         Storage::disk('local')->delete($oldPaths);
 
-        return to_route('procurement.tenders.edit', ['application' => $application->id, 'tab' => $section === 'engineering' ? 'items' : $section]);
+        return to_route('procurement.tenders.edit', ['application' => $application->id, 'tab' => $section === 'engineering' ? 'items' : $section])
+            ->with('status', $this->savedMessage($section));
+    }
+
+    private function savedMessage(string $section): string
+    {
+        return match ($section) {
+            'basic' => '基本信息已保存',
+            'items' => '采购清单已保存',
+            'engineering' => '工程清单已保存',
+            'budget' => '项目预算指标已保存',
+            'attachments' => '附件已保存',
+        };
     }
 
     public function submit(Request $request, ProcurementApplication $application, ApprovalWorkflow $workflow): RedirectResponse

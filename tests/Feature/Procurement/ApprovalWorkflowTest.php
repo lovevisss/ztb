@@ -108,6 +108,21 @@ class ApprovalWorkflowTest extends TestCase
         $this->assertSame([$head->id, $otherDirector->id, $procurementHead->id, $manager->id, $assetHead->id, $supervisor->id, $group->id], $steps);
         $this->assertDatabaseCount('approval_events', 3);
 
+        $manualHead = $this->user($this->department('兼任人员所在部门'));
+        DB::table('department_head_assignments')->insert([
+            'department_id' => $department, 'user_id' => $manualHead->id,
+            'updated_by' => $applicant->id, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        app(ApprovalWorkflow::class)->start($application->fresh());
+        $this->assertDatabaseHas('approval_steps', [
+            'application_id' => $application->id, 'attempt' => 2, 'position' => 1,
+            'assignee_id' => $manualHead->id,
+        ]);
+        $this->assertDatabaseHas('approval_steps', [
+            'application_id' => $application->id, 'attempt' => 1, 'position' => 1,
+            'assignee_id' => $head->id,
+        ]);
+
         DB::table('procurement_budget_allocations')->where('application_id', $application->id)
             ->where('code', 'B')->update(['charge_sno' => 'UNKNOWN']);
         try {
@@ -115,6 +130,37 @@ class ApprovalWorkflowTest extends TestCase
             $this->fail('缺少有效经费负责人账号时应阻止新一轮审批');
         } catch (\Illuminate\Validation\ValidationException $exception) {
             $this->assertArrayHasKey('allocations', $exception->errors());
+        }
+    }
+
+    public function test_missing_head_error_names_usage_or_applicant_department(): void
+    {
+        $applicantDepartment = $this->department('申请部门');
+        $usageDepartment = $this->department('使用部门');
+        $applicant = $this->user($applicantDepartment);
+        $application = ProcurementApplication::create([
+            'applicant_id' => $applicant->id, 'department_id' => $applicantDepartment,
+            'usage_department_id' => $usageDepartment, 'has_usage_department' => true,
+            'application_form' => 'central_tender', 'purchase_type' => 'central_tender',
+            'title' => '测试项目', 'budget_cents' => 30000000, 'status' => 'draft',
+        ]);
+        try {
+            app(ApprovalWorkflow::class)->start($application);
+            $this->fail('应要求配置使用部门负责人');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertStringContainsString('使用部门「使用部门」', $exception->errors()['approvers'][0]);
+        }
+
+        $head = $this->user($this->department('跨部门人员'));
+        DB::table('department_head_assignments')->insert([
+            'department_id' => $usageDepartment, 'user_id' => $head->id,
+            'updated_by' => $applicant->id, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        try {
+            app(ApprovalWorkflow::class)->start($application);
+            $this->fail('应要求配置申请部门负责人');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertStringContainsString('申请部门「申请部门」', $exception->errors()['approvers'][0]);
         }
     }
 

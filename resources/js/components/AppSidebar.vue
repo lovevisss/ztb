@@ -95,6 +95,11 @@ if (usePage().props.canManageSchoolUsers === true) {
         icon: IconUsers,
     });
     mainNavItems.push({
+        title: '部门负责人',
+        href: '/admin/department-heads',
+        icon: IconUsers,
+    });
+    mainNavItems.push({
         title: '组织同步',
         href: '/admin/organization',
         icon: IconHierarchy,
