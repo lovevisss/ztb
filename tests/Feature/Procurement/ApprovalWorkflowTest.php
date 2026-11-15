@@ -41,6 +41,11 @@ class ApprovalWorkflowTest extends TestCase
         $managerId = DB::table('role_user')->join('roles', 'roles.id', '=', 'role_user.role_id')
             ->where('roles.code', 'procurement_manager')->min('role_user.user_id');
         if ($headId !== null && $managerId !== null) {
+            DB::table('approval_role_defaults')->updateOrInsert(
+                ['role_code' => 'tender_group_representative'],
+                ['user_id' => $managerId, 'updated_by' => $managerId,
+                    'created_at' => now(), 'updated_at' => now()],
+            );
             DB::table('users')->where('id', $headId)->update(['school_account' => 'WORKFLOW-HEAD-'.$headId]);
             foreach (['procurement_head', 'asset_head'] as $role) {
                 DB::table('role_user')->updateOrInsert([
@@ -85,6 +90,10 @@ class ApprovalWorkflowTest extends TestCase
         DB::table('procurement_department_approvers')->insert([
             'department_id' => $department, 'supervising_leader_id' => $supervisor->id,
             'tender_group_representative_id' => $group->id, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('approval_role_defaults')->insert([
+            'role_code' => 'tender_group_representative', 'user_id' => $group->id,
+            'updated_by' => $applicant->id, 'created_at' => now(), 'updated_at' => now(),
         ]);
         $application = ProcurementApplication::create([
             'applicant_id' => $applicant->id, 'department_id' => $department,

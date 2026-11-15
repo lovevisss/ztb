@@ -16,7 +16,7 @@ type Template = {
 type Department = { id: number; name: string };
 type User = { id: number; name: string; department_id: number | null };
 type Role = { code: string; name: string };
-type DepartmentApprover = { department_id: number; supervising_leader_id: number; tender_group_representative_id: number };
+type DepartmentApprover = { department_id: number; supervising_leader_id: number };
 
 const props = defineProps<{
     templates: Template[];
@@ -24,6 +24,7 @@ const props = defineProps<{
     users: User[];
     roles: Role[];
     departmentApprovers: DepartmentApprover[];
+    globalRepresentative: string | null;
 }>();
 
 const form = useForm({
@@ -35,11 +36,10 @@ const form = useForm({
     responsible_department: '',
     assignees: { procurement_head: null as number | null, procurement_manager: null as number | null, asset_head: null as number | null },
 });
-const mapping = useForm({ department_id: null as number | null, supervising_leader_id: null as number | null, tender_group_representative_id: null as number | null });
+const mapping = useForm({ department_id: null as number | null, supervising_leader_id: null as number | null });
 function selectDepartment(id: number | null) {
     const saved = props.departmentApprovers.find((item) => item.department_id === id);
     mapping.supervising_leader_id = saved?.supervising_leader_id ?? null;
-    mapping.tender_group_representative_id = saved?.tender_group_representative_id ?? null;
 }
 function save() {
     form.post('/procurement/approval-templates');
@@ -205,14 +205,12 @@ function save() {
                     >
                 </form>
                 <form class="mt-8 space-y-4 border-t border-[var(--brand-border)] pt-6" @submit.prevent="mapping.post('/procurement/department-approvers')">
-                    <h2 class="text-lg font-semibold text-[var(--brand-title)]">部门审批人映射</h2>
+                    <h2 class="text-lg font-semibold text-[var(--brand-title)]">部门经费分管院领导</h2>
+                    <p class="text-sm text-[var(--brand-muted)]">招投标领导小组代表由系统管理员统一设置。当前：{{ globalRepresentative ?? '未配置或账号停用' }}</p>
                     <el-select v-model="mapping.department_id" filterable placeholder="选择申请人部门" class="w-full" @change="selectDepartment">
                         <el-option v-for="department in departments" :key="department.id" :label="department.name" :value="department.id" />
                     </el-select>
                     <el-select v-model="mapping.supervising_leader_id" filterable placeholder="经费分管院领导" class="w-full">
-                        <el-option v-for="user in users" :key="user.id" :label="user.name" :value="user.id" />
-                    </el-select>
-                    <el-select v-model="mapping.tender_group_representative_id" filterable placeholder="招投标领导小组代表" class="w-full">
                         <el-option v-for="user in users" :key="user.id" :label="user.name" :value="user.id" />
                     </el-select>
                     <p v-for="error in mapping.errors" :key="error" class="field-error">{{ error }}</p>

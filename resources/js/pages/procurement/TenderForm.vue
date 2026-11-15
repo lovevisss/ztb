@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { canPreviewAttachment } from '@/lib/procurement-attachment';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type Item = { name: string; specification: string; quantity: number; unit_price: number; unit: string; remarks: string };
 type SavedItem = { name: string; specification: string | null; quantity: number; unit_price_cents: number; unit: string | null; remarks: string | null };
@@ -194,6 +195,53 @@ function feedbackClass(section: SaveSection) {
 }
 
 function blankItem(): Item { return { name: '', specification: '', quantity: 1, unit_price: 0, unit: '', remarks: '' }; }
+const itemEditorOpen = ref(false);
+const editingItemIndex = ref<number | null>(null);
+const itemDraft = ref<Item>(blankItem());
+const itemDraftErrors = ref<Partial<Record<keyof Item, string>>>({});
+function openItemEditor(index: number | null = null) {
+    editingItemIndex.value = index;
+    itemDraft.value = index === null ? blankItem() : { ...itemForm.items[index] };
+    itemDraftErrors.value = {};
+    itemEditorOpen.value = true;
+}
+function itemErrors(index: number): string[] {
+    return Object.entries(itemForm.errors)
+        .filter(([key]) => key.startsWith(`items.${index}.`)).map(([, value]) => String(value));
+}
+function confirmItem() {
+    const item = itemDraft.value;
+    const errors: Partial<Record<keyof Item, string>> = {};
+    if (!item.name.trim() || [...item.name].length > 255) errors.name = '请输入货物名称，最多255个字符。';
+    if (String(item.quantity) === '' || invalidQuantity(item.quantity)) errors.quantity = '数量必须大于零，最多保留三位小数。';
+    if (String(item.unit_price) === '' || invalidMoney(item.unit_price)) errors.unit_price = '单价必须为非负金额，最多保留两位小数。';
+    if ([...item.unit].length > 50) errors.unit = '单位最多50个字符。';
+    itemDraftErrors.value = errors;
+    if (Object.keys(errors).length) return;
+    const value = { ...item, name: item.name.trim(), quantity: Number(item.quantity), unit_price: Number(item.unit_price) };
+    if (editingItemIndex.value === null) {
+        if (itemForm.items.length >= 500) { itemDraftErrors.value = { name: '单次最多添加500项采购清单。' }; return; }
+        itemForm.items.push(value);
+    } else {
+        const index = editingItemIndex.value;
+        itemForm.items[index] = value;
+        const keys = Object.keys(itemForm.errors).filter((key) => key.startsWith(`items.${index}.`));
+        itemForm.clearErrors(...keys as (keyof typeof itemForm.errors)[]);
+    }
+    itemEditorOpen.value = false;
+}
+function deleteItem(index: number) {
+    if (!window.confirm(`确定删除“${itemForm.items[index].name || '未命名项目'}”？保存采购清单后生效。`)) return;
+    const remainingErrors = Object.entries(itemForm.errors).flatMap(([key, message]) => {
+        const match = /^items\.(\d+)\.(.+)$/.exec(key);
+        if (!match) return [[key, message]];
+        const row = Number(match[1]);
+        return row === index ? [] : [[`items.${row > index ? row - 1 : row}.${match[2]}`, message]];
+    });
+    itemForm.clearErrors();
+    itemForm.setError(Object.fromEntries(remainingErrors));
+    itemForm.items.splice(index, 1);
+}
 function save(section: Tab | 'engineering') {
     if (activeSaving.value || !props.departmentAssigned) return;
     const form = section === 'basic' ? basic : section === 'items' ? itemForm : section === 'engineering' ? engineeringForm : section === 'budget' ? budgetForm : attachmentForm;
@@ -368,7 +416,7 @@ const importError = ref('');
         <section v-else id="items" class="panel">
             <h2 class="section-title">采购清单</h2>
             <div class="mb-4 flex flex-wrap items-center gap-3 text-sm">
-                <button type="button" class="action" @click="itemForm.items.push(blankItem())">＋ 添加采购清单</button>
+                <button type="button" class="action" @click="openItemEditor()">＋ 添加采购清单</button>
                 <select v-model="selectedCatalog" class="field max-w-56"><option value="">从个人物资库选择</option><option v-for="item in catalog" :key="item.id" :value="item.id">{{ item.name }}</option></select>
                 <button type="button" class="action" @click="addFromCatalog">抽取</button>
                 <label class="action cursor-pointer">导入 Excel/CSV<input type="file" accept=".xlsx,.csv" class="sr-only" @change="importItems" /></label>
@@ -379,20 +427,48 @@ const importError = ref('');
                 <p>采购清单保存失败，请修改以下内容：</p>
                 <p v-for="(message, field) in itemForm.errors" :key="field">{{ message }}</p>
             </div>
-            <div class="space-y-4">
-                <div v-for="(item, index) in itemForm.items" :key="index" class="rounded-[var(--brand-radius-md)] border border-[var(--brand-border)] p-4">
-                    <div class="grid gap-3 md:grid-cols-3">
-                        <label><span class="label">货物名称 <span class="required">*</span></span><input v-model="item.name" class="field" /></label>
-                        <label class="md:col-span-2"><span class="label">技术参数、配置/主要配置</span><input v-model="item.specification" class="field" /></label>
-                        <label><span class="label">数量 <span class="required">*</span></span><input v-model.number="item.quantity" class="field" type="number" min="0.001" step="0.001" /><small class="field-hint">支持小数，精确到三位</small><small v-if="invalidQuantity(item.quantity)" class="error">请输入大于零的数量，最多保留三位小数。</small></label>
-                        <label><span class="label">单价（元） <span class="required">*</span></span><input v-model.number="item.unit_price" class="field" type="number" min="0" step="0.01" inputmode="decimal" /><small v-if="invalidMoney(item.unit_price)" class="error">请输入非负单价，最多保留两位小数。</small></label>
-                        <label><span class="label">单位</span><input v-model="item.unit" class="field" /></label>
-                        <label class="md:col-span-2"><span class="label">备注</span><input v-model="item.remarks" class="field" /></label>
-                        <div class="flex items-end justify-between"><span>总价：¥{{ money(Number(item.quantity || 0) * Number(item.unit_price || 0)) }}</span><button type="button" class="text-[var(--brand-danger)]" @click="itemForm.items.splice(index, 1)">删除</button></div>
-                    </div>
-                    <p v-for="field in ['name', 'quantity', 'unit_price']" :key="field" class="error">{{ itemForm.errors[`items.${index}.${field}` as keyof typeof itemForm.errors] }}</p>
-                </div>
+            <div class="overflow-x-auto rounded-[var(--brand-radius-md)] border border-[var(--brand-border)]">
+                <table class="w-full min-w-[1000px] table-fixed text-left text-sm text-[var(--brand-body)]">
+                    <thead class="bg-[var(--brand-soft)] text-xs text-[var(--brand-muted)]"><tr>
+                        <th class="w-14 p-3">序号</th><th class="w-44 p-3">货物名称</th><th class="w-48 p-3">技术参数</th><th class="w-20 p-3 text-right">数量</th><th class="w-28 p-3 text-right">单价（元）</th><th class="w-16 p-3">单位</th><th class="w-28 p-3 text-right">总价（元）</th><th class="w-40 p-3">备注</th><th class="w-28 p-3">操作</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-[var(--brand-border)]">
+                        <tr v-for="(item, index) in itemForm.items" :key="index" class="hover:bg-[var(--brand-primary-light)]">
+                            <td class="p-3 align-top">{{ index + 1 }}</td>
+                            <td class="p-3 align-top"><span class="block truncate font-medium text-[var(--brand-title)]" :title="item.name">{{ item.name }}</span><p v-for="(message, errorIndex) in itemErrors(index)" :key="errorIndex" class="mt-1 text-xs text-[var(--brand-danger)]">{{ message }}</p></td>
+                            <td class="p-3 align-top"><span class="block truncate" :title="item.specification">{{ item.specification || '—' }}</span></td>
+                            <td class="p-3 text-right align-top tabular-nums">{{ item.quantity }}</td>
+                            <td class="whitespace-nowrap p-3 text-right align-top tabular-nums">{{ money(Number(item.unit_price)) }}</td>
+                            <td class="p-3 align-top"><span class="block truncate" :title="item.unit">{{ item.unit || '—' }}</span></td>
+                            <td class="whitespace-nowrap p-3 text-right align-top tabular-nums">{{ money(Math.round(Number(item.unit_price) * 100 * Number(item.quantity)) / 100) }}</td>
+                            <td class="p-3 align-top"><span class="block truncate" :title="item.remarks">{{ item.remarks || '—' }}</span></td>
+                            <td class="p-3 align-top"><div class="flex gap-3"><button type="button" class="item-link" :disabled="activeSaving" :aria-label="`修改第${index + 1}项 ${item.name}`" @click="openItemEditor(index)">修改</button><button type="button" class="item-link !text-[var(--brand-danger)]" :disabled="activeSaving" :aria-label="`删除第${index + 1}项 ${item.name}`" @click="deleteItem(index)">删除</button></div></td>
+                        </tr>
+                        <tr v-if="!itemForm.items.length"><td colspan="9" class="p-8 text-center text-[var(--brand-muted)]">暂无采购清单，请添加项目、从物资库抽取或导入文件。</td></tr>
+                    </tbody>
+                </table>
             </div>
+            <Dialog v-model:open="itemEditorOpen">
+                <DialogContent class="item-editor max-h-[90dvh] overflow-y-auto border-[var(--brand-border)] bg-[var(--brand-card)] text-[var(--brand-body)] sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle class="text-xl text-[var(--brand-title)]">{{ editingItemIndex === null ? '添加采购清单' : '修改采购清单' }}</DialogTitle>
+                        <DialogDescription class="text-[var(--brand-muted)]">确认后加入下方列表；点击“保存采购清单”提交全部更改。</DialogDescription>
+                    </DialogHeader>
+                    <form class="grid gap-4 sm:grid-cols-2" novalidate @submit.prevent="confirmItem">
+                        <label class="sm:col-span-2"><span class="label">货物名称 <span class="required">*</span></span><input v-model="itemDraft.name" class="field" maxlength="255" :aria-invalid="!!itemDraftErrors.name" /><small v-if="itemDraftErrors.name" role="alert" class="error">{{ itemDraftErrors.name }}</small></label>
+                        <label class="sm:col-span-2"><span class="label">技术参数、配置/主要配置</span><textarea v-model="itemDraft.specification" class="field min-h-24" rows="3" /></label>
+                        <label><span class="label">数量 <span class="required">*</span></span><input v-model.number="itemDraft.quantity" class="field" type="number" min="0.001" step="0.001" :aria-invalid="!!itemDraftErrors.quantity" /><small class="field-hint">最多保留三位小数</small><small v-if="itemDraftErrors.quantity" role="alert" class="error">{{ itemDraftErrors.quantity }}</small></label>
+                        <label><span class="label">单价（元） <span class="required">*</span></span><input v-model.number="itemDraft.unit_price" class="field" type="number" min="0" step="0.01" inputmode="decimal" :aria-invalid="!!itemDraftErrors.unit_price" /><small v-if="itemDraftErrors.unit_price" role="alert" class="error">{{ itemDraftErrors.unit_price }}</small></label>
+                        <label><span class="label">单位</span><input v-model="itemDraft.unit" class="field" maxlength="50" /><small v-if="itemDraftErrors.unit" role="alert" class="error">{{ itemDraftErrors.unit }}</small></label>
+                        <div class="self-end pb-2 text-sm font-semibold">总价：¥{{ money(Math.round(Number(itemDraft.unit_price || 0) * 100 * Number(itemDraft.quantity || 0)) / 100) }}</div>
+                        <label class="sm:col-span-2"><span class="label">备注</span><textarea v-model="itemDraft.remarks" class="field min-h-20" rows="2" /></label>
+                        <div class="flex flex-wrap justify-end gap-3 border-t border-[var(--brand-border)] pt-4 sm:col-span-2">
+                            <button type="button" class="item-editor-cancel" @click="itemEditorOpen = false">取消</button>
+                            <button type="submit" class="item-editor-confirm">{{ editingItemIndex === null ? '添加到清单' : '确定修改' }}</button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
             <p class="mt-5 text-right font-semibold">合计：¥{{ money(total) }}</p>
             <button type="button" class="save" :disabled="activeSaving || !departmentAssigned" :aria-busy="itemForm.processing" @click="save('items')">{{ itemForm.processing ? '保存中…' : '保存采购清单' }}</button>
             <p v-if="saveFeedback.items.state !== 'idle'" role="status" aria-live="polite" class="mt-3 text-center text-sm" :class="saveFeedback.items.state === 'error' ? 'text-[var(--brand-danger)]' : saveFeedback.items.state === 'saved' ? 'text-[var(--brand-success)]' : 'text-[var(--brand-muted)]'">{{ saveFeedback.items.message }}<span v-if="saveFeedback.items.time"> · {{ saveFeedback.items.time }}</span></p>
@@ -492,6 +568,14 @@ const importError = ref('');
 .field:focus { outline: 2px solid var(--brand-primary); outline-offset: 1px; }
 .field:disabled { background: var(--brand-soft); color: var(--brand-muted); }
 .error { color: var(--brand-danger); font-size: .75rem; }
+.item-link { color: var(--brand-primary); white-space: nowrap; }
+.item-link:hover { text-decoration: underline; }
+.item-link:disabled { opacity: .5; }
+.item-editor-confirm, .item-editor-cancel { min-height: 40px; border-radius: var(--brand-radius-md); padding: .5rem 1.25rem; font-size: .875rem; }
+.item-editor-confirm { background: var(--brand-primary); color: var(--brand-on-primary); }
+.item-editor-confirm:hover { background: var(--brand-primary-hover); }
+.item-editor-cancel { border: 1px solid var(--brand-border); color: var(--brand-primary); background: var(--brand-card); }
+.item-link:focus-visible, .item-editor-confirm:focus-visible, .item-editor-cancel:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
 .save { display: block; margin: 1.5rem auto 0; min-height: 2.5rem; background: var(--brand-primary); color: var(--brand-on-primary); border-radius: var(--brand-radius-md); padding: .65rem 1.75rem; font-size: .875rem; }
 .save:hover:not(:disabled) { background: var(--brand-primary-hover); }
 .save:disabled { opacity: .5; }

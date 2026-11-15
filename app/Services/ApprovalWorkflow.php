@@ -67,15 +67,21 @@ class ApprovalWorkflow
         }
         $mapping = DB::table('procurement_department_approvers')->where('department_id', $application->department_id)->first();
         if ($mapping === null) {
-            throw ValidationException::withMessages(['department_id' => '申请人所在部门尚未配置经费分管院领导及招投标领导小组代表。']);
+            throw ValidationException::withMessages(['department_id' => '申请人所在部门尚未配置经费分管院领导。']);
         }
-        foreach (['supervising_leader_id' => 'supervising_leader', 'tender_group_representative_id' => 'tender_group_representative'] as $field => $role) {
-            $id = $mapping->{$field};
-            if (! DB::table('users')->where('id', $id)->where('is_active', true)->exists()) {
-                throw ValidationException::withMessages(['department_id' => '部门审批映射中存在无效账号，请联系管理员。']);
-            }
-            $resolved[] = ['role_code' => $role, 'assignee_id' => (int) $id];
+        if (! DB::table('users')->where('id', $mapping->supervising_leader_id)->where('is_active', true)->exists()) {
+            throw ValidationException::withMessages(['department_id' => '经费分管院领导账号已停用，请联系管理员。']);
         }
+        $resolved[] = ['role_code' => 'supervising_leader', 'assignee_id' => (int) $mapping->supervising_leader_id];
+
+        $representative = DB::table('approval_role_defaults')->where('role_code', 'tender_group_representative')->value('user_id');
+        if ($representative === null) {
+            throw ValidationException::withMessages(['approvers' => '尚未配置招投标领导小组代表，请联系系统管理员在“其他审批人”中设置。']);
+        }
+        if (! DB::table('users')->where('id', $representative)->where('is_active', true)->exists()) {
+            throw ValidationException::withMessages(['approvers' => '招投标领导小组代表账号已停用，请联系系统管理员更换。']);
+        }
+        $resolved[] = ['role_code' => 'tender_group_representative', 'assignee_id' => (int) $representative];
 
         $seen = [];
         $skipped = [];

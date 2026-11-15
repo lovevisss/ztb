@@ -23,8 +23,12 @@ class ApprovalTemplateController extends Controller
             }),
             'departments' => DB::table('departments')->orderBy('name')->get(['id', 'name']),
             'users' => DB::table('users')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'department_id']),
-            'roles' => DB::table('roles')->whereIn('code', ['department_head', 'budget_director', 'procurement_head', 'procurement_manager', 'asset_head', 'supervising_leader', 'tender_group_representative'])->get(['code', 'name']),
-            'departmentApprovers' => DB::table('procurement_department_approvers')->get(),
+            'roles' => DB::table('roles')->whereIn('code', ['procurement_head', 'procurement_manager', 'asset_head'])->get(['code', 'name']),
+            'departmentApprovers' => DB::table('procurement_department_approvers')->get(['department_id', 'supervising_leader_id']),
+            'globalRepresentative' => DB::table('approval_role_defaults as defaults')
+                ->join('users', 'users.id', '=', 'defaults.user_id')
+                ->where('defaults.role_code', 'tender_group_representative')
+                ->where('users.is_active', true)->value('users.name'),
         ]);
     }
 
@@ -81,12 +85,11 @@ class ApprovalTemplateController extends Controller
         $data = $request->validate([
             'department_id' => ['required', 'exists:departments,id'],
             'supervising_leader_id' => ['required', Rule::exists('users', 'id')->where('is_active', true)],
-            'tender_group_representative_id' => ['required', Rule::exists('users', 'id')->where('is_active', true)],
+            'tender_group_representative_id' => ['prohibited'],
         ]);
         DB::table('procurement_department_approvers')->updateOrInsert(
             ['department_id' => $data['department_id']],
             ['supervising_leader_id' => $data['supervising_leader_id'],
-                'tender_group_representative_id' => $data['tender_group_representative_id'],
                 'created_at' => now(), 'updated_at' => now()],
         );
         $request->attributes->set('audit_subject', ['type' => 'department', 'id' => (string) $data['department_id']]);

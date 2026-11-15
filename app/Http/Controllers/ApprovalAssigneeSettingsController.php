@@ -15,6 +15,7 @@ class ApprovalAssigneeSettingsController extends Controller
         'procurement_head' => '采购管理部门领导',
         'procurement_manager' => '采购管理人员',
         'asset_head' => '资产管理部领导',
+        'tender_group_representative' => '招投标领导小组代表',
     ];
 
     public function index(Request $request): Response
@@ -30,6 +31,14 @@ class ApprovalAssigneeSettingsController extends Controller
         $users = DB::table('users')->leftJoin('departments', 'departments.id', '=', 'users.department_id')
             ->where('users.is_active', true)->orderBy('users.name')
             ->get(['users.id', 'users.name', 'users.school_account', 'departments.name as department_name']);
+        $legacyRepresentatives = DB::table('procurement_department_approvers')
+            ->whereNotNull('tender_group_representative_id')->distinct()->pluck('tender_group_representative_id');
+        $representativeNotice = match (true) {
+            $defaults->has('tender_group_representative') => null,
+            $legacyRepresentatives->count() > 1 => '历史部门配置中的小组代表不一致，请指定一名全局代表。',
+            $legacyRepresentatives->count() === 1 => '历史小组代表账号已停用，请指定一名有效的全局代表。',
+            default => '尚未配置全局小组代表，请指定一名有效人员。',
+        };
 
         return Inertia::render('admin/ApprovalAssignees', [
             'roles' => collect(self::ROLES)->map(function ($name, $code) use ($matches, $defaults, $defaultUsers) {
@@ -39,6 +48,7 @@ class ApprovalAssigneeSettingsController extends Controller
 
                 return [
                     'code' => $code, 'name' => $name, 'default_user_id' => $defaultId,
+                    'required_default' => $code === 'tender_group_representative',
                     'default_user_name' => $defaultUser?->name,
                     'default_user_active' => $defaultUser === null ? null : (bool) $defaultUser->is_active,
                     'role_users' => $assigned->pluck('name')->all(),
@@ -49,7 +59,8 @@ class ApprovalAssigneeSettingsController extends Controller
             })->values(),
             'users' => $users,
             'departments' => DB::table('departments')->orderBy('name')->get(['id', 'name']),
-            'departmentApprovers' => DB::table('procurement_department_approvers')->get(),
+            'departmentApprovers' => DB::table('procurement_department_approvers')->get(['department_id', 'supervising_leader_id']),
+            'representativeNotice' => $representativeNotice,
             'budgetIndicatorSummary' => [
                 'total' => DB::table('budget_indicators')->where('source', 'school_source')->count(),
                 'unresolved' => DB::table('budget_indicators')->where('source', 'school_source')
@@ -65,7 +76,9 @@ class ApprovalAssigneeSettingsController extends Controller
         abort_unless($request->user()->hasAnyRole(['system_admin']), 403);
         abort_unless(array_key_exists($role, self::ROLES), 404);
         $data = $request->validate([
-            'user_id' => ['present', 'nullable', 'integer', Rule::exists('users', 'id')->where('is_active', true)],
+            'user_id' => [$role === 'tender_group_representative' ? 'required' : 'present',
+                $role === 'tender_group_representative' ? 'integer' : 'nullable',
+                Rule::exists('users', 'id')->where('is_active', true)],
         ]);
 
         DB::transaction(function () use ($request, $role, $data): void {
