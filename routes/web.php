@@ -17,6 +17,7 @@ use App\Http\Controllers\ProcurementAttachmentController;
 use App\Http\Controllers\ProcurementClassificationRuleController;
 use App\Http\Controllers\ProcurementExecutionController;
 use App\Http\Controllers\ProcurementHistoryController;
+use App\Http\Controllers\ProcurementProjectOverviewController;
 use App\Http\Controllers\ProcurementStatisticsController;
 use App\Http\Controllers\SchoolCasCallbackController;
 use App\Http\Controllers\SchoolCasLoginController;
@@ -76,6 +77,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('procurement/classification-rules', [ProcurementClassificationRuleController::class, 'store'])->name('procurement.classification-rules.store');
     Route::get('procurement/approval-templates', [ApprovalTemplateController::class, 'index'])->name('procurement.approval-templates.index');
     Route::get('procurement/history', [ProcurementHistoryController::class, 'index'])->name('procurement.history.index');
+    Route::get('procurement/projects', ProcurementProjectOverviewController::class)->name('procurement.projects.index');
     Route::get('procurement/legacy-history', [LegacyProcurementController::class, 'index'])->name('procurement.legacy-history.index');
     Route::get('procurement/legacy-history/{sourceId}/attachments/{attachment}/download', [LegacyAttachmentController::class, 'download'])->name('procurement.legacy-attachments.download');
     Route::get('procurement/legacy-history/{sourceId}', [LegacyProcurementController::class, 'show'])->name('procurement.legacy-history.show');
