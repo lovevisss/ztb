@@ -1,5 +1,5 @@
 import { createInertiaApp } from '@inertiajs/vue3';
-import { ElButton, ElInput, ElOption, ElSelect } from 'element-plus';
+import { ElAutocomplete, ElButton, ElInput, ElOption, ElSelect } from 'element-plus';
 import 'element-plus/dist/index.css';
 import { initializeTheme } from '@/composables/useAppearance';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -24,6 +24,7 @@ void createInertiaApp({
         }
     },
     withApp: (app) => {
+        app.component('ElAutocomplete', ElAutocomplete);
         app.component('ElButton', ElButton);
         app.component('ElInput', ElInput);
         app.component('ElOption', ElOption);

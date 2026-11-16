@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\LegacyApprovalTimeline;
+use App\Services\LegacyProcurementAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -46,15 +47,12 @@ class LegacyProcurementController extends Controller
         ]);
     }
 
-    public function show(Request $request, string $sourceId, LegacyApprovalTimeline $timeline): Response
+    public function show(Request $request, string $sourceId, LegacyApprovalTimeline $timeline, LegacyProcurementAccess $access): Response
     {
         $project = DB::table('legacy_procurement_records')->where('source_table', 'zcy_cgsq')
             ->where('source_id', $sourceId)->first();
         abort_if($project === null, 404);
-        $user = $request->user();
-        abort_unless($user->hasAnyRole(['procurement_manager', 'system_admin'])
-            || $project->user_id === $user->id
-            || ($user->department_id !== null && $project->department_id === $user->department_id), 403);
+        abort_unless($access->canView($request->user(), $project), 403);
 
         $records = DB::table('legacy_procurement_records')->where('application_source_id', $sourceId)
             ->where('source_table', '!=', 'zcy_cgsq')
@@ -66,7 +64,7 @@ class LegacyProcurementController extends Controller
             'records' => $records,
             'workflowNodes' => $timeline->nodes($project, $records),
             'attachments' => DB::table('legacy_procurement_attachments')->where('application_source_id', $sourceId)
-                ->get(['owner_table', 'owner_source_id', 'name', 'migration_status']),
+                ->get(['id', 'owner_table', 'owner_source_id', 'name', 'migration_status']),
         ]);
     }
 }

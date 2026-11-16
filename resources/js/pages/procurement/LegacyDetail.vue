@@ -14,6 +14,7 @@ type RecordRow = {
     details: string | Record<string, unknown>;
 };
 type Attachment = {
+    id: number;
     owner_table: string;
     owner_source_id: string;
     name: string | null;
@@ -177,9 +178,10 @@ function itemField(row: RecordRow, keys: string[]) {
                 >
             </h2>
             <p
+                v-if="attachments.some((file) => file.migration_status !== 'available')"
                 class="mt-[var(--brand-space-8)] text-sm text-[var(--brand-warning)]"
             >
-                文件待迁移，暂不提供下载。
+                部分文件仍待迁移，暂不提供下载。
             </p>
             <ul
                 v-if="attachments.length"
@@ -190,10 +192,16 @@ function itemField(row: RecordRow, keys: string[]) {
                     :key="index"
                     class="flex justify-between gap-[var(--brand-space-16)] py-[var(--brand-space-8)]"
                 >
-                    <span>{{ file.name || '未命名附件' }}</span
-                    ><span class="text-[var(--brand-muted)]">{{
-                        labels[file.owner_table] || file.owner_table
-                    }} · 文件待迁移</span>
+                    <span>{{ file.name || '未命名附件' }}</span>
+                    <span class="text-[var(--brand-muted)]">
+                        {{ labels[file.owner_table] || file.owner_table }} ·
+                        <a
+                            v-if="file.migration_status === 'available'"
+                            :href="`/procurement/legacy-history/${encodeURIComponent(project.source_id)}/attachments/${file.id}/download`"
+                            class="font-medium text-[var(--brand-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-primary)]"
+                        >下载</a>
+                        <span v-else>文件待迁移</span>
+                    </span>
                 </li>
             </ul>
             <p v-else class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]">原系统未导入附件记录</p>

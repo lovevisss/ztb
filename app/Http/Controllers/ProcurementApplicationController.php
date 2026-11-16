@@ -42,7 +42,7 @@ class ProcurementApplicationController extends Controller
                 'workflowNodes' => $timeline->nodes($project, $records),
                 'attachments' => DB::table('legacy_procurement_attachments')
                     ->where('application_source_id', $sourceId)
-                    ->get(['owner_table', 'owner_source_id', 'name', 'migration_status']),
+                    ->get(['id', 'owner_table', 'owner_source_id', 'name', 'migration_status']),
                 'backHref' => '/procurement/applications',
             ]);
         }
