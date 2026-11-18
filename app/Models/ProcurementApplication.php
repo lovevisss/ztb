@@ -18,10 +18,11 @@ class ProcurementApplication extends Model
         'executor_id',
         'category', 'contact_phone', 'is_special_purchase', 'is_non_expenditure',
         'has_usage_department', 'usage_department_id', 'special_purchase_reason', 'remarks',
+        'responsible_department_id', 'reason_category', 'has_furniture', 'has_equipment_asset',
     ];
 
     protected function casts(): array
     {
-        return ['is_fixed_asset' => 'boolean', 'is_special_purchase' => 'boolean', 'is_non_expenditure' => 'boolean', 'has_usage_department' => 'boolean', 'submitted_at' => 'datetime'];
+        return ['is_fixed_asset' => 'boolean', 'is_special_purchase' => 'boolean', 'is_non_expenditure' => 'boolean', 'has_usage_department' => 'boolean', 'has_furniture' => 'boolean', 'has_equipment_asset' => 'boolean', 'submitted_at' => 'datetime'];
     }
 }

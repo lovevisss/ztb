@@ -54,6 +54,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('procurement/applications', [ProcurementApplicationController::class, 'index'])->name('procurement.applications.index');
     Route::get('procurement/applications/export', [ProcurementApplicationController::class, 'export'])->name('procurement.applications.export');
     Route::get('procurement/applications/create', [ProcurementApplicationController::class, 'create'])->name('procurement.applications.create');
+    Route::get('procurement/applications/create/form', [ProcurementApplicationController::class, 'newForm'])->name('procurement.applications.new-form');
+    Route::post('procurement/applications/sections', [TenderSectionsController::class, 'selfCreate'])->name('procurement.applications.sections.create');
+    Route::post('procurement/applications/{application}/sections', [TenderSectionsController::class, 'selfUpdate'])->name('procurement.applications.sections.update');
+    Route::post('procurement/applications/{application}/submit', [TenderSectionsController::class, 'selfSubmit'])->name('procurement.applications.sections.submit');
     Route::post('procurement/applications', [ProcurementApplicationController::class, 'store'])->name('procurement.applications.store');
     Route::get('procurement/applications/{application}/edit', [ProcurementApplicationController::class, 'edit'])->name('procurement.applications.edit');
     Route::put('procurement/applications/{application}', [ProcurementApplicationController::class, 'update'])->name('procurement.applications.update');

@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\ProcurementApplication;
 use App\Models\ProcurementAttachment;
-use App\Models\ProcurementClassificationRule;
 use App\Services\ApprovalWorkflow;
+use App\Services\ProcurementThreshold;
+use App\Services\SelfPurchaseDepartments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -26,6 +27,11 @@ class CentralTenderApplicationController extends Controller
     public function newForm(Request $request): Response
     {
         return $this->form($request);
+    }
+
+    public function selfForm(Request $request, ?ProcurementApplication $application = null): Response
+    {
+        return $this->form($request, $application, true);
     }
 
     public function edit(Request $request, ProcurementApplication $application): Response
@@ -91,18 +97,21 @@ class CentralTenderApplicationController extends Controller
         return to_route('procurement.applications.index');
     }
 
-    private function form(Request $request, ?ProcurementApplication $application = null): Response
+    private function form(Request $request, ?ProcurementApplication $application = null, bool $self = false): Response
     {
         return Inertia::render('procurement/TenderForm', [
             'application' => $application,
+            'selfPurchase' => $self,
+            'responsibleDepartments' => $self ? app(SelfPurchaseDepartments::class)->options() : [],
             'attachments' => $application === null ? [] : ProcurementAttachment::query()
                 ->where('application_id', $application->id)->where('kind', '!=', 'engineering_bill')
                 ->get(['id', 'kind', 'original_name', 'size', 'mime_type']),
             'departmentAssigned' => $request->user()->department_id !== null,
-            'threshold' => ProcurementClassificationRule::effectiveFor($request->user()->department_id)->threshold_cents / 100,
+            'threshold' => ProcurementThreshold::CENTRAL_YUAN,
             'applicantName' => $request->user()->name,
             'applicantPhone' => $request->user()->mobile_phone,
             'departmentName' => DB::table('departments')->where('id', $request->user()->department_id)->value('name'),
+            'applicantDepartmentId' => $request->user()->department_id,
             'departments' => DB::table('departments')->orderBy('name')->get(['id', 'name']),
             'items' => $application === null ? [] : DB::table('procurement_line_items')->where('application_id', $application->id)->orderBy('position')->get(),
             'engineering' => $application === null ? null : DB::table('procurement_engineering_details')->where('application_id', $application->id)->first(),
@@ -160,8 +169,7 @@ class CentralTenderApplicationController extends Controller
             return;
         }
 
-        $rule = ProcurementClassificationRule::effectiveFor($departmentId);
-        if ($data['budget_cents'] < $rule->threshold_cents) {
+        if ($data['budget_cents'] < ProcurementThreshold::CENTRAL_CENTS) {
             throw ValidationException::withMessages(['budget' => '该预算应使用部门自行采购申请。']);
         }
 
@@ -219,12 +227,11 @@ class CentralTenderApplicationController extends Controller
             return;
         }
 
-        $rule = ProcurementClassificationRule::effectiveFor($application->department_id);
         $application->update([
             'status' => 'submitted',
             'purchase_type' => 'central_tender',
-            'classification_rule_id' => $rule->id,
-            'classification_threshold_cents' => $rule->threshold_cents,
+            'classification_rule_id' => null,
+            'classification_threshold_cents' => ProcurementThreshold::CENTRAL_CENTS,
             'project_number' => $application->project_number ?? 'CG'.now()->format('Y').'-'.str_pad((string) $application->id, 6, '0', STR_PAD_LEFT),
             'submitted_at' => now(),
         ]);

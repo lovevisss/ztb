@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\ProcurementApplication;
 use App\Models\ProcurementAttachment;
-use App\Models\ProcurementClassificationRule;
 use App\Services\ApprovalWorkflow;
+use App\Services\ProcurementThreshold;
+use App\Services\SelfPurchaseDepartments;
 use App\Services\TenderNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,19 +21,43 @@ class TenderSectionsController extends Controller
 {
     private const SPECIAL_METHODS = ['邀请招标', '竞争性谈判', '竞争性磋商', '单一来源', '询价', '谈判', '政采云等平台'];
 
+    private const SELF_METHODS = ['谈判', '询价', '政采云等平台', '单一来源'];
+
+    private const SELF_REASONS = ['原采购（服务）合同到期，需重新采购', '原设备损坏或已无法满足现有需求，需重新采购', '因会议或活动（课题等）需要，申请采购（列明会议活动或课题名称及内容）', '上述都不是，请自行列明'];
+
+    public function selfCreate(Request $request, TenderNumber $numbers): RedirectResponse
+    {
+        return $this->createSection($request, $numbers, true);
+    }
+
+    public function selfUpdate(Request $request, ProcurementApplication $application): RedirectResponse
+    {
+        return $this->updateSection($request, $application, true);
+    }
+
+    public function selfSubmit(Request $request, ProcurementApplication $application, ApprovalWorkflow $workflow): RedirectResponse
+    {
+        return $this->submitApplication($request, $application, $workflow, true);
+    }
+
     public function create(Request $request, TenderNumber $numbers): RedirectResponse
+    {
+        return $this->createSection($request, $numbers, false);
+    }
+
+    private function createSection(Request $request, TenderNumber $numbers, bool $self): RedirectResponse
     {
         abort_if($request->user()->department_id === null, 422, '当前用户尚未关联部门');
         $section = $request->validate(['section' => ['required', Rule::in(['basic', 'items', 'engineering', 'budget', 'attachments'])]])['section'];
-        $data = $this->sectionData($request, $section);
+        $data = $this->sectionData($request, $section, null, $self);
         $paths = [];
         $oldPaths = [];
         try {
-            $application = DB::transaction(function () use ($request, $numbers, $section, $data, &$paths, &$oldPaths) {
+            $application = DB::transaction(function () use ($request, $numbers, $section, $data, $self, &$paths, &$oldPaths) {
                 $application = ProcurementApplication::create([
                     'applicant_id' => $request->user()->id,
                     'department_id' => $request->user()->department_id,
-                    'application_form' => 'central_tender',
+                    'application_form' => $self ? 'self_purchase' : 'central_tender',
                     'status' => 'draft',
                     'project_number' => $numbers->next(),
                 ]);
@@ -48,21 +73,26 @@ class TenderSectionsController extends Controller
         $request->attributes->set('audit_subject', ['type' => 'application', 'id' => (string) $application->id,
             'label' => $application->project_number ?? $application->title]);
 
-        return to_route('procurement.tenders.edit', ['application' => $application->id, 'tab' => $section === 'engineering' ? 'items' : $section])
+        return to_route($self ? 'procurement.applications.edit' : 'procurement.tenders.edit', ['application' => $application->id, 'tab' => $section === 'engineering' ? 'items' : $section])
             ->with('status', $this->savedMessage($section));
     }
 
     public function update(Request $request, ProcurementApplication $application): RedirectResponse
     {
-        $this->authorizeDraft($request, $application);
+        return $this->updateSection($request, $application, false);
+    }
+
+    private function updateSection(Request $request, ProcurementApplication $application, bool $self): RedirectResponse
+    {
+        $this->authorizeDraft($request, $application, $self);
         $section = $request->validate(['section' => ['required', Rule::in(['basic', 'items', 'engineering', 'budget', 'attachments'])]])['section'];
-        $data = $this->sectionData($request, $section, $application);
+        $data = $this->sectionData($request, $section, $application, $self);
         $paths = [];
         $oldPaths = [];
         try {
-            DB::transaction(function () use ($request, $application, $section, $data, &$paths, &$oldPaths) {
+            DB::transaction(function () use ($request, $application, $section, $data, $self, &$paths, &$oldPaths) {
                 $locked = ProcurementApplication::query()->lockForUpdate()->findOrFail($application->id);
-                $this->authorizeDraft($request, $locked);
+                $this->authorizeDraft($request, $locked, $self);
                 $this->saveSection($request, $locked, $section, $data, $paths, $oldPaths);
             });
         } catch (Throwable $exception) {
@@ -71,7 +101,7 @@ class TenderSectionsController extends Controller
         }
         Storage::disk('local')->delete($oldPaths);
 
-        return to_route('procurement.tenders.edit', ['application' => $application->id, 'tab' => $section === 'engineering' ? 'items' : $section])
+        return to_route($self ? 'procurement.applications.edit' : 'procurement.tenders.edit', ['application' => $application->id, 'tab' => $section === 'engineering' ? 'items' : $section])
             ->with('status', $this->savedMessage($section));
     }
 
@@ -88,18 +118,39 @@ class TenderSectionsController extends Controller
 
     public function submit(Request $request, ProcurementApplication $application, ApprovalWorkflow $workflow): RedirectResponse
     {
-        $this->authorizeDraft($request, $application);
-        DB::transaction(function () use ($request, $application, $workflow) {
+        return $this->submitApplication($request, $application, $workflow, false);
+    }
+
+    private function submitApplication(Request $request, ProcurementApplication $application, ApprovalWorkflow $workflow, bool $self): RedirectResponse
+    {
+        $this->authorizeDraft($request, $application, $self);
+        DB::transaction(function () use ($request, $application, $workflow, $self) {
             $application = ProcurementApplication::query()->lockForUpdate()->findOrFail($application->id);
-            $this->authorizeDraft($request, $application);
+            $this->authorizeDraft($request, $application, $self);
             $errors = [];
             foreach (['title', 'category', 'contact_phone', 'procurement_requirements'] as $field) {
                 if (blank($application->{$field})) {
                     $errors[$field] = '请填写此项。';
                 }
             }
-            if ($application->is_special_purchase && ! in_array($application->purchase_method, self::SPECIAL_METHODS, true)) {
+            if ($self && ! in_array($application->purchase_method, self::SELF_METHODS, true)) {
+                $errors['purchase_method'] = '请选择有效的部门自行采购方式。';
+            } elseif (! $self && $application->is_special_purchase && ! in_array($application->purchase_method, self::SPECIAL_METHODS, true)) {
                 $errors['purchase_method'] = '请选择特殊采购方式。';
+            }
+            if ($self) {
+                if (! in_array($application->reason_category, self::SELF_REASONS, true)) {
+                    $errors['reason_category'] = '请选择采购理由。';
+                }
+                if ($application->reason_category === '上述都不是，请自行列明' && blank($application->reason)) {
+                    $errors['reason'] = '请填写具体采购理由。';
+                }
+                if ($application->responsible_department_id === null) {
+                    $errors['responsible_department_id'] = '请选择经费归口部门。';
+                }
+                if (! $application->has_furniture && ! $application->has_equipment_asset && $application->is_fixed_asset) {
+                    $errors['has_furniture'] = '请选择资产类型。';
+                }
             }
             if ($application->has_usage_department && $application->usage_department_id === null) {
                 $errors['usage_department_id'] = '请选择使用部门。';
@@ -128,18 +179,27 @@ class TenderSectionsController extends Controller
             if ((int) DB::table('procurement_budget_allocations')->where('application_id', $application->id)->sum('amount_cents') !== $total) {
                 $errors['budget'] = '预算指标使用金额合计须与采购清单合计一致。';
             }
-            $rule = ProcurementClassificationRule::effectiveFor($application->department_id);
-            if ($total < $rule->threshold_cents) {
+            if ($self && $total >= ProcurementThreshold::CENTRAL_CENTS) {
+                $errors['items'] = '预算达到10万元，请使用统一采购申请。';
+            } elseif (! $self && $total < ProcurementThreshold::CENTRAL_CENTS) {
                 $errors[$application->category === '工程类' ? 'estimated_cost' : 'items'] = '该金额应使用部门自行采购申请。';
+            }
+            if ($self && $total < ProcurementThreshold::SMALL_SELF_CENTS) {
+                $prices = DB::table('procurement_line_items')->where('application_id', $application->id)->pluck('unit_price_cents');
+                $qualifies = ($application->has_furniture && $prices->contains(fn ($price) => $price > 20_000))
+                    || ($application->has_equipment_asset && $prices->contains(fn ($price) => $price > 100_000));
+                if (! $qualifies) {
+                    $errors['items'] = '1万元以下普通采购无需在本系统申请；家具单价须超过200元或设备固定资产单价须超过1000元。';
+                }
             }
             if ($errors !== []) {
                 throw ValidationException::withMessages($errors);
             }
             $application->update([
                 'budget_cents' => $total,
-                'purchase_type' => 'central_tender',
-                'classification_rule_id' => $rule->id,
-                'classification_threshold_cents' => $rule->threshold_cents,
+                'purchase_type' => $self ? 'self_purchase' : 'central_tender',
+                'classification_rule_id' => null,
+                'classification_threshold_cents' => ProcurementThreshold::CENTRAL_CENTS,
                 'submitted_at' => now(),
             ]);
             $workflow->start($application);
@@ -208,16 +268,16 @@ class TenderSectionsController extends Controller
         return back()->with('status', Artisan::output());
     }
 
-    private function authorizeDraft(Request $request, ProcurementApplication $application): void
+    private function authorizeDraft(Request $request, ProcurementApplication $application, bool $self = false): void
     {
         abort_unless($application->applicant_id === $request->user()->id, 403);
-        abort_unless($application->application_form === 'central_tender' && in_array($application->status, ['draft', 'returned', 'withdrawn'], true), 403);
+        abort_unless($application->application_form === ($self ? 'self_purchase' : 'central_tender') && in_array($application->status, ['draft', 'returned', 'withdrawn'], true), 403);
     }
 
-    private function sectionData(Request $request, string $section, ?ProcurementApplication $application = null): array
+    private function sectionData(Request $request, string $section, ?ProcurementApplication $application = null, bool $self = false): array
     {
         return match ($section) {
-            'basic' => $this->basicData($request),
+            'basic' => $this->basicData($request, $self),
             'items' => $request->validate([
                 'items' => ['present', 'array', 'max:500'],
                 'items.*.name' => ['required', 'string', 'max:255'],
@@ -270,7 +330,7 @@ class TenderSectionsController extends Controller
         return $data;
     }
 
-    private function basicData(Request $request): array
+    private function basicData(Request $request, bool $self = false): array
     {
         $data = $request->validate([
             'title' => ['nullable', 'string', 'max:255'],
@@ -284,8 +344,28 @@ class TenderSectionsController extends Controller
             'usage_department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'procurement_requirements' => ['nullable', 'string'],
             'remarks' => ['nullable', 'string'],
+            'responsible_department_id' => [$self ? 'required' : 'nullable', 'integer', 'exists:departments,id'],
+            'reason_category' => [$self ? 'required' : 'nullable', Rule::in(self::SELF_REASONS)],
+            'reason' => ['nullable', 'string'],
+            'has_furniture' => [$self ? 'required' : 'nullable', 'boolean'],
+            'has_equipment_asset' => [$self ? 'required' : 'nullable', 'boolean'],
         ]);
-        if ($data['is_special_purchase']) {
+        if ($self) {
+            if (! in_array($data['purchase_method'] ?? null, self::SELF_METHODS, true)) {
+                throw ValidationException::withMessages(['purchase_method' => '请选择有效的部门自行采购方式。']);
+            }
+            if (! app(SelfPurchaseDepartments::class)->validId((int) $data['responsible_department_id'])
+                && (int) $data['responsible_department_id'] !== (int) $request->user()->department_id) {
+                throw ValidationException::withMessages(['responsible_department_id' => '请选择列表中的经费归口部门。']);
+            }
+            if (($data['reason_category'] ?? null) === '上述都不是，请自行列明' && blank($data['reason'] ?? null)) {
+                throw ValidationException::withMessages(['reason' => '请填写具体采购理由。']);
+            }
+            $data['responsible_department'] = DB::table('departments')->where('id', $data['responsible_department_id'])->value('name');
+            $data['is_fixed_asset'] = $data['has_furniture'] || $data['has_equipment_asset'];
+            $data['is_special_purchase'] = false;
+            $data['special_purchase_reason'] = null;
+        } elseif ($data['is_special_purchase']) {
             if (! in_array($data['purchase_method'] ?? null, self::SPECIAL_METHODS, true)) {
                 throw ValidationException::withMessages(['purchase_method' => '请选择特殊采购方式。']);
             }

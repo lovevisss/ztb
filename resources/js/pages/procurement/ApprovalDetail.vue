@@ -21,6 +21,9 @@ type Application = {
     organization_form: string;
     purchase_method: string;
     reason: string | null;
+    reason_category: string | null;
+    has_furniture: boolean;
+    has_equipment_asset: boolean;
     responsible_department: string;
     procurement_requirements: string | null;
     purchase_list: string | null;
@@ -173,6 +176,7 @@ const roleLabel: Record<string, string> = {
     procurement_head: '采购管理部门领导',
     procurement_manager: '采购管理部门',
     asset_head: '资产管理部领导',
+    asset_manager: '资产管理员',
     supervising_leader: '经费分管院领导',
     tender_group_representative: '招投标领导小组代表',
     responsible_department: '归口部门',
@@ -256,9 +260,9 @@ const basicFields = computed(() => [
     ...(props.application.funding_source?.trim() ? [['经费列支', props.application.funding_source]] : []),
     ...(props.application.responsible_department?.trim() ? [['归口部门', props.application.responsible_department]] : []),
     ['拟采购方式', display(props.application.purchase_method)],
-    ['是否特殊采购', props.application.is_special_purchase ? '是' : '否'],
-    ['使用部门', display(props.usageDepartmentName)],
-    ['是否为非支出项目', props.application.is_non_expenditure ? '是' : '否'],
+    ...(props.application.application_form === 'self_purchase'
+        ? [['含家具采购', props.application.has_furniture ? '是' : '否'], ['含设备固定资产采购', props.application.has_equipment_asset ? '是' : '否'], ['采购理由', display(props.application.reason_category)]]
+        : [['是否特殊采购', props.application.is_special_purchase ? '是' : '否'], ['使用部门', display(props.usageDepartmentName)], ['是否为非支出项目', props.application.is_non_expenditure ? '是' : '否']]),
     ...(props.application.project_leader?.trim() ? [['项目负责人', props.application.project_leader]] : []),
     ['申报时间', props.application.submitted_at?.slice(0, 16).replace('T', ' ') || '—'],
 ]);
@@ -266,7 +270,7 @@ const longFields = computed(() => [
     ['申请特殊采购方式理由', props.application.special_purchase_reason],
     ['采购要求', props.application.procurement_requirements],
     ['采购清单说明', props.application.purchase_list],
-    ['采购理由', props.application.reason],
+    ['采购理由说明', props.application.reason],
     ['技术参数', props.application.technical_parameters],
     ['服务要求', props.application.service_requirements],
     ['验收标准', props.application.acceptance_criteria],

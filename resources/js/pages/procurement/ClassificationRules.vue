@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 
 type Rule = {
     id: number;
@@ -13,19 +13,6 @@ type Rule = {
 type Department = { id: number; name: string };
 
 const props = defineProps<{ rules: Rule[]; departments: Department[] }>();
-
-const form = useForm({
-    threshold_yuan: '100000',
-    scope: 'global',
-    department_id: '',
-    effective_at: '',
-});
-
-function save() {
-    form.post('/procurement/classification-rules', {
-        onSuccess: () => form.reset(),
-    });
-}
 
 function departmentName(id: number | null) {
     return id === null
@@ -56,12 +43,12 @@ function departmentName(id: number | null) {
             <p
                 class="mt-[var(--brand-space-16)] text-sm text-[var(--brand-muted)]"
             >
-                设置预算分界金额与生效时间。已经提交的项目保留原分类结果。
+                新申请以10万元为固定分界金额。下列历史规则仅供查阅，已提交项目保留原分类结果。
             </p>
         </header>
 
         <div
-            class="mt-[var(--brand-space-32)] grid gap-[var(--brand-space-32)] lg:grid-cols-[minmax(0,1fr)_340px]"
+            class="mt-[var(--brand-space-32)]"
         >
             <section
                 class="overflow-hidden rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] shadow-sm"
@@ -77,7 +64,7 @@ function departmentName(id: number | null) {
                     <p
                         class="mt-[var(--brand-space-8)] text-xs text-[var(--brand-muted)]"
                     >
-                        到达生效时间后，新提交项目自动采用适用规则。
+                        历史规则记录，不再用于新提交项目。
                     </p>
                 </div>
                 <div class="overflow-x-auto">
@@ -112,7 +99,7 @@ function departmentName(id: number | null) {
                                     <span
                                         v-if="rule.is_active"
                                         class="ml-[var(--brand-space-8)] rounded-full bg-[var(--brand-primary-light)] px-[var(--brand-space-8)] py-[var(--brand-space-8)] text-xs text-[var(--brand-primary)]"
-                                        >当前</span
+                                        >历史生效</span
                                     >
                                     <span
                                         v-else-if="rule.is_scheduled"
@@ -144,98 +131,7 @@ function departmentName(id: number | null) {
                 </div>
             </section>
 
-            <section
-                class="h-fit rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] bg-[var(--brand-primary-light)]/60 p-[var(--brand-space-24)] lg:sticky lg:top-8"
-            >
-                <p
-                    class="text-xs font-semibold tracking-widest text-[var(--brand-primary)]"
-                >
-                    新增规则
-                </p>
-                <h2
-                    class="mt-[var(--brand-space-8)] font-sans text-xl text-[var(--brand-title)]"
-                >
-                    安排下一版分类标准
-                </h2>
-                <form
-                    class="mt-[var(--brand-space-24)] space-y-[var(--brand-space-24)]"
-                    @submit.prevent="save"
-                >
-                    <label class="block">
-                        <span class="field-label">预算分界金额（元）</span>
-                        <input
-                            v-model="form.threshold_yuan"
-                            type="number"
-                            min="0.01"
-                            step="0.01"
-                            class="field-input"
-                        />
-                        <span
-                            v-if="form.errors.threshold_yuan"
-                            class="field-error"
-                            >{{ form.errors.threshold_yuan }}</span
-                        >
-                    </label>
-                    <label class="block">
-                        <span class="field-label">适用范围</span>
-                        <select
-                            v-model="form.scope"
-                            class="field-input"
-                            @change="form.department_id = ''"
-                        >
-                            <option value="global">全校</option>
-                            <option value="department">指定部门</option>
-                        </select>
-                        <span v-if="form.errors.scope" class="field-error">{{
-                            form.errors.scope
-                        }}</span>
-                    </label>
-                    <label v-if="form.scope === 'department'" class="block">
-                        <span class="field-label">部门</span>
-                        <select
-                            v-model="form.department_id"
-                            class="field-input"
-                        >
-                            <option value="">请选择部门</option>
-                            <option
-                                v-for="department in departments"
-                                :key="department.id"
-                                :value="department.id"
-                            >
-                                {{ department.name }}
-                            </option>
-                        </select>
-                        <span
-                            v-if="form.errors.department_id"
-                            class="field-error"
-                            >{{ form.errors.department_id }}</span
-                        >
-                    </label>
-                    <label class="block">
-                        <span class="field-label">生效时间</span>
-                        <input
-                            v-model="form.effective_at"
-                            type="datetime-local"
-                            class="field-input"
-                        />
-                        <span
-                            v-if="form.errors.effective_at"
-                            class="field-error"
-                            >{{ form.errors.effective_at }}</span
-                        >
-                    </label>
-                    <button
-                        type="submit"
-                        :disabled="form.processing"
-                        class="w-full rounded-[var(--brand-radius-md)] bg-[var(--brand-primary)] px-[var(--brand-space-24)] py-[var(--brand-space-16)] text-sm font-medium text-[var(--brand-on-primary)] hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
-                    >
-                        保存规则
-                    </button>
-                    <p class="text-xs leading-5 text-[var(--brand-body)]">
-                        部门规则优先于全校规则。调整后只影响生效时间之后提交的申请。
-                    </p>
-                </form>
-            </section>
+
         </div>
     </main>
 </template>

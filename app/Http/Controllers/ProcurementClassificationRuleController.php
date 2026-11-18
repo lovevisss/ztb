@@ -6,7 +6,6 @@ use App\Models\ProcurementClassificationRule;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -48,25 +47,8 @@ class ProcurementClassificationRuleController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $this->authorizeManager($request);
+        abort(410, '采购分类分界金额现固定为10万元，历史规则仅供查阅。');
 
-        $data = $request->validate([
-            'threshold_yuan' => ['required', 'numeric', 'min:0.01', 'decimal:0,2'],
-            'scope' => ['required', Rule::in(['global', 'department'])],
-            'department_id' => ['required_if:scope,department', 'prohibited_if:scope,global', 'exists:departments,id'],
-            'effective_at' => ['required', 'date'],
-        ]);
-
-        $rule = ProcurementClassificationRule::create([
-            'threshold_cents' => (int) round((float) $data['threshold_yuan'] * 100),
-            'scope' => $data['scope'],
-            'department_id' => $data['scope'] === 'department' ? $data['department_id'] : null,
-            'effective_at' => $data['effective_at'],
-            'created_by' => $request->user()->id,
-        ]);
-        $request->attributes->set('audit_subject', ['type' => 'classification_rule', 'id' => (string) $rule->id,
-            'label' => $data['scope'] === 'global' ? '全局分类规则' : '部门分类规则']);
-
-        return to_route('procurement.classification-rules.index');
     }
 
     private function authorizeManager(Request $request): void

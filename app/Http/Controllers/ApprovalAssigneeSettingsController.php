@@ -15,6 +15,8 @@ class ApprovalAssigneeSettingsController extends Controller
         'procurement_head' => '采购管理部门领导',
         'procurement_manager' => '采购管理人员',
         'asset_head' => '资产管理部领导',
+        'asset_manager' => '资产管理员',
+        'finance' => '计划财务部审批人',
         'tender_group_representative' => '招投标领导小组代表',
     ];
 

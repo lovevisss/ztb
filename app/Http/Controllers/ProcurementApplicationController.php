@@ -106,31 +106,25 @@ class ProcurementApplicationController extends Controller
 
     public function create(Request $request): Response
     {
-        return Inertia::render('procurement/Form', [
-            'application' => null,
-            'departmentAssigned' => $request->user()->department_id !== null,
-            'threshold' => ProcurementClassificationRule::effectiveFor($request->user()->department_id)->threshold_cents / 100,
-            'budgetIndicators' => DB::table('budget_indicators')->where('source', 'school_source')->where('status', '1')->orderBy('name')->get(['id', 'code', 'name', 'director']),
-            'allocations' => [],
-        ]);
+        return Inertia::render('procurement/SelfPurchasePolicy');
     }
 
-    public function edit(Request $request, ProcurementApplication $application): Response
+    public function newForm(Request $request, CentralTenderApplicationController $forms): Response
+    {
+        return $forms->selfForm($request);
+    }
+
+    public function edit(Request $request, ProcurementApplication $application, CentralTenderApplicationController $forms): Response
     {
         abort_unless($application->applicant_id === $request->user()->id, 403);
         abort_unless(in_array($application->status, ['draft', 'returned', 'withdrawn'], true) && $application->application_form === 'self_purchase', 403);
 
-        return Inertia::render('procurement/Form', [
-            'application' => $application,
-            'departmentAssigned' => $request->user()->department_id !== null,
-            'threshold' => ProcurementClassificationRule::effectiveFor($request->user()->department_id)->threshold_cents / 100,
-            'budgetIndicators' => DB::table('budget_indicators')->where('source', 'school_source')->where('status', '1')->orderBy('name')->get(['id', 'code', 'name', 'director']),
-            'allocations' => DB::table('procurement_budget_allocations')->where('application_id', $application->id)->get(['budget_indicator_id', 'amount_cents']),
-        ]);
+        return $forms->selfForm($request, $application);
     }
 
     public function store(Request $request, ApprovalWorkflow $workflow): RedirectResponse
     {
+        abort(410, '请使用新版部门自行采购分区填报页。');
         abort_if($request->user()->department_id === null, 422, '当前用户尚未关联部门');
 
         $data = $this->validatedData($request);
@@ -157,6 +151,7 @@ class ProcurementApplicationController extends Controller
 
     public function update(Request $request, ProcurementApplication $application, ApprovalWorkflow $workflow): RedirectResponse
     {
+        abort(410, '请使用新版部门自行采购分区填报页。');
         abort_unless($application->applicant_id === $request->user()->id, 403);
         abort_unless(in_array($application->status, ['draft', 'returned', 'withdrawn'], true) && $application->application_form === 'self_purchase', 403);
 

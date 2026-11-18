@@ -32,65 +32,71 @@ class ApprovalWorkflow
         }
 
         $resolved = [];
-        if ($application->application_form === 'central_tender' && $application->has_usage_department && $application->usage_department_id !== null) {
-            $resolved[] = ['role_code' => 'usage_department_head', 'assignee_id' => $this->departmentHead($application->usage_department_id, '使用部门')];
-        }
-        $resolved[] = ['role_code' => 'department_head', 'assignee_id' => $this->departmentHead($application->department_id, '申请部门')];
+        if ($application->purchase_type === 'self_purchase') {
+            $resolved = $this->selfPurchaseSteps($application, $template->id);
+        } else {
+            if ($application->application_form === 'central_tender' && $application->has_usage_department && $application->usage_department_id !== null) {
+                $resolved[] = ['role_code' => 'usage_department_head', 'assignee_id' => $this->departmentHead($application->usage_department_id, '使用部门')];
+            }
+            $resolved[] = ['role_code' => 'department_head', 'assignee_id' => $this->departmentHead($application->department_id, '申请部门')];
 
-        $allocations = DB::table('procurement_budget_allocations')->where('application_id', $application->id)
-            ->orderBy('id')->get(['name', 'charge_sno']);
-        if ($allocations->isEmpty()) {
-            throw ValidationException::withMessages(['allocations' => '请先填写经费代码及金额明细。']);
-        }
-        foreach ($allocations as $allocation) {
-            $account = trim((string) $allocation->charge_sno);
-            $userId = $account === '' ? null : DB::table('users')->where('school_account', $account)
-                ->where('is_active', true)->value('id');
-            if ($userId === null) {
-                throw ValidationException::withMessages(['allocations' => "经费「{$allocation->name}」的负责人缺少有效工号或系统账号。"]);
+            $allocations = DB::table('procurement_budget_allocations')->where('application_id', $application->id)
+                ->orderBy('id')->get(['name', 'charge_sno']);
+            if ($allocations->isEmpty()) {
+                throw ValidationException::withMessages(['allocations' => '请先填写经费代码及金额明细。']);
             }
-            $resolved[] = ['role_code' => 'budget_director', 'assignee_id' => (int) $userId];
-        }
-        foreach (['procurement_head', 'procurement_manager', 'asset_head'] as $role) {
-            $configured = DB::table('approval_template_steps')->where('template_id', $template->id)
-                ->where('role_code', $role)->value('assignee_id');
-            if ($configured !== null && ! DB::table('users')->where('id', $configured)->where('is_active', true)->exists()) {
-                throw ValidationException::withMessages(['approvers' => '审批岗位'.$this->roleName($role).'的流程指定账号已停用。']);
+            foreach ($allocations as $allocation) {
+                $account = trim((string) $allocation->charge_sno);
+                $userId = $account === '' ? null : DB::table('users')->where('school_account', $account)
+                    ->where('is_active', true)->value('id');
+                if ($userId === null) {
+                    throw ValidationException::withMessages(['allocations' => "经费「{$allocation->name}」的负责人缺少有效工号或系统账号。"]);
+                }
+                $resolved[] = ['role_code' => 'budget_director', 'assignee_id' => (int) $userId];
             }
-            $default = $configured === null
-                ? DB::table('approval_role_defaults')->where('role_code', $role)->value('user_id') : null;
-            if ($default !== null && ! DB::table('users')->where('id', $default)->where('is_active', true)->exists()) {
-                throw ValidationException::withMessages(['approvers' => '审批岗位'.$this->roleName($role).'的默认审批人账号已停用。']);
+            foreach (['procurement_head', 'procurement_manager', 'asset_head'] as $role) {
+                $configured = DB::table('approval_template_steps')->where('template_id', $template->id)
+                    ->where('role_code', $role)->value('assignee_id');
+                if ($configured !== null && ! DB::table('users')->where('id', $configured)->where('is_active', true)->exists()) {
+                    throw ValidationException::withMessages(['approvers' => '审批岗位'.$this->roleName($role).'的流程指定账号已停用。']);
+                }
+                $default = $configured === null
+                    ? DB::table('approval_role_defaults')->where('role_code', $role)->value('user_id') : null;
+                if ($default !== null && ! DB::table('users')->where('id', $default)->where('is_active', true)->exists()) {
+                    throw ValidationException::withMessages(['approvers' => '审批岗位'.$this->roleName($role).'的默认审批人账号已停用。']);
+                }
+                $resolved[] = ['role_code' => $role, 'assignee_id' => $configured !== null
+                    ? (int) $configured : ($default !== null ? (int) $default : $this->roleUser($role))];
             }
-            $resolved[] = ['role_code' => $role, 'assignee_id' => $configured !== null
-                ? (int) $configured : ($default !== null ? (int) $default : $this->roleUser($role))];
-        }
-        $mapping = DB::table('procurement_department_approvers')->where('department_id', $application->department_id)->first();
-        if ($mapping === null) {
-            throw ValidationException::withMessages(['department_id' => '申请人所在部门尚未配置经费分管院领导。']);
-        }
-        if (! DB::table('users')->where('id', $mapping->supervising_leader_id)->where('is_active', true)->exists()) {
-            throw ValidationException::withMessages(['department_id' => '经费分管院领导账号已停用，请联系管理员。']);
-        }
-        $resolved[] = ['role_code' => 'supervising_leader', 'assignee_id' => (int) $mapping->supervising_leader_id];
+            $mapping = DB::table('procurement_department_approvers')->where('department_id', $application->department_id)->first();
+            if ($mapping === null) {
+                throw ValidationException::withMessages(['department_id' => '申请人所在部门尚未配置经费分管院领导。']);
+            }
+            if (! DB::table('users')->where('id', $mapping->supervising_leader_id)->where('is_active', true)->exists()) {
+                throw ValidationException::withMessages(['department_id' => '经费分管院领导账号已停用，请联系管理员。']);
+            }
+            $resolved[] = ['role_code' => 'supervising_leader', 'assignee_id' => (int) $mapping->supervising_leader_id];
 
-        $representative = DB::table('approval_role_defaults')->where('role_code', 'tender_group_representative')->value('user_id');
-        if ($representative === null) {
-            throw ValidationException::withMessages(['approvers' => '尚未配置招投标领导小组代表，请联系系统管理员在“其他审批人”中设置。']);
+            $representative = DB::table('approval_role_defaults')->where('role_code', 'tender_group_representative')->value('user_id');
+            if ($representative === null) {
+                throw ValidationException::withMessages(['approvers' => '尚未配置招投标领导小组代表，请联系系统管理员在“其他审批人”中设置。']);
+            }
+            if (! DB::table('users')->where('id', $representative)->where('is_active', true)->exists()) {
+                throw ValidationException::withMessages(['approvers' => '招投标领导小组代表账号已停用，请联系系统管理员更换。']);
+            }
+            $resolved[] = ['role_code' => 'tender_group_representative', 'assignee_id' => (int) $representative];
         }
-        if (! DB::table('users')->where('id', $representative)->where('is_active', true)->exists()) {
-            throw ValidationException::withMessages(['approvers' => '招投标领导小组代表账号已停用，请联系系统管理员更换。']);
-        }
-        $resolved[] = ['role_code' => 'tender_group_representative', 'assignee_id' => (int) $representative];
 
         $seen = [];
         $skipped = [];
         $resolved = array_values(array_filter($resolved, function (array $step) use (&$seen, &$skipped) {
             if (isset($seen[$step['assignee_id']])) {
                 $skipped[] = $step['role_code'].'：与 '.$seen[$step['assignee_id']].' 为同一审批人，已跳过';
+
                 return false;
             }
             $seen[$step['assignee_id']] = $step['role_code'];
+
             return true;
         }));
 
@@ -141,6 +147,7 @@ class ApprovalWorkflow
             if (! DB::table('users')->where('id', $manual)->where('is_active', true)->exists()) {
                 throw ValidationException::withMessages(['approvers' => "{$kind}「{$name}」手动指定的负责人账号已停用，请联系管理员。"]);
             }
+
             return (int) $manual;
         }
 
@@ -151,7 +158,45 @@ class ApprovalWorkflow
         if ($id === null) {
             throw ValidationException::withMessages(['approvers' => "{$kind}「{$name}」尚未配置有效负责人，请联系管理员在“部门负责人”中设置。"]);
         }
+
         return (int) $id;
+    }
+
+    private function selfPurchaseSteps(ProcurementApplication $application, int $templateId): array
+    {
+        $steps = [['role_code' => 'department_head', 'assignee_id' => $this->departmentHead($application->department_id, '申请部门')]];
+        $responsible = $application->responsible_department_id ?? $application->department_id;
+        if ($responsible !== $application->department_id) {
+            $steps[] = ['role_code' => 'responsible_department', 'assignee_id' => $this->departmentHead($responsible, '归口部门')];
+        }
+        if ($application->has_furniture || $application->has_equipment_asset) {
+            $steps[] = ['role_code' => 'asset_manager', 'assignee_id' => $this->configuredRoleUser('asset_manager', $templateId)];
+            $steps[] = ['role_code' => 'asset_head', 'assignee_id' => $this->configuredRoleUser('asset_head', $templateId)];
+        }
+        $steps[] = ['role_code' => 'procurement_manager', 'assignee_id' => $this->configuredRoleUser('procurement_manager', $templateId)];
+        $steps[] = ['role_code' => 'finance', 'assignee_id' => $this->configuredRoleUser('finance', $templateId)];
+        $mapping = DB::table('procurement_department_approvers')->where('department_id', $application->department_id)->first();
+        if ($mapping === null || ! DB::table('users')->where('id', $mapping->supervising_leader_id)->where('is_active', true)->exists()) {
+            throw ValidationException::withMessages(['approvers' => '申请部门尚未配置有效的经费分管院领导。']);
+        }
+        $steps[] = ['role_code' => 'supervising_leader', 'assignee_id' => (int) $mapping->supervising_leader_id];
+
+        return $steps;
+    }
+
+    private function configuredRoleUser(string $role, int $templateId): int
+    {
+        $id = DB::table('approval_template_steps')->where('template_id', $templateId)->where('role_code', $role)->value('assignee_id')
+            ?? DB::table('approval_role_defaults')->where('role_code', $role)->value('user_id');
+        if ($id !== null) {
+            if (! DB::table('users')->where('id', $id)->where('is_active', true)->exists()) {
+                throw ValidationException::withMessages(['approvers' => '审批岗位'.$this->roleName($role).'的指定账号已停用。']);
+            }
+
+            return (int) $id;
+        }
+
+        return $this->roleUser($role);
     }
 
     private function roleUser(string $roleCode, ?int $departmentId = null): int
@@ -173,6 +218,7 @@ class ApprovalWorkflow
             $reason = $ids->isEmpty() ? '尚无有效人员' : '匹配到多名有效人员';
             throw ValidationException::withMessages(['approvers' => '审批岗位'.$this->roleName($roleCode)."{$reason}，请联系管理员配置默认审批人。"]);
         }
+
         return (int) $ids->first();
     }
 
@@ -182,6 +228,8 @@ class ApprovalWorkflow
             'procurement_head' => '采购管理部门领导',
             'procurement_manager' => '采购管理人员',
             'asset_head' => '资产管理部领导',
+            'asset_manager' => '资产管理员',
+            'finance' => '计划财务部',
             default => $roleCode,
         };
     }

@@ -9,13 +9,16 @@ type Item = { name: string; specification: string; quantity: number; unit_price:
 type SavedItem = { name: string; specification: string | null; quantity: number; unit_price_cents: number; unit: string | null; remarks: string | null };
 type Indicator = { id: number; code: string | null; name: string; director: string | null; department_code: string | null; department_name: string | null; status: string | null; available_cents: number | null };
 type CatalogItem = { id: number; name: string; specification: string | null; unit: string | null; unit_price_cents: number; remarks: string | null };
-type Application = { id: number; status: string; project_number: string | null; title: string | null; category: string | null; contact_phone: string | null; purchase_method: string | null; is_special_purchase: boolean; special_purchase_reason: string | null; is_non_expenditure: boolean; has_usage_department: boolean; usage_department_id: number | null; procurement_requirements: string | null; remarks: string | null; budget_basis_note: string | null; budget_cents: number | null };
+type Application = { id: number; status: string; project_number: string | null; title: string | null; category: string | null; contact_phone: string | null; purchase_method: string | null; is_special_purchase: boolean; special_purchase_reason: string | null; is_non_expenditure: boolean; has_usage_department: boolean; usage_department_id: number | null; procurement_requirements: string | null; remarks: string | null; budget_basis_note: string | null; budget_cents: number | null; responsible_department_id: number | null; reason_category: string | null; reason: string | null; has_furniture: boolean; has_equipment_asset: boolean };
 type Attachment = { id: number; original_name: string; size: number; mime_type: string | null };
 type Allocation = { budget_indicator_id: number; amount_cents: number; code: string | null; name: string; director: string | null };
 type Engineering = { project_name: string | null; construction_content: string | null; project_overview: string | null; schedule_requirements: string | null; estimated_cost_cents: number | null };
 
 const props = defineProps<{
     application: Application | null;
+    selfPurchase: boolean;
+    responsibleDepartments: { id: number | null; label: string }[];
+    applicantDepartmentId: number | null;
     attachments: Attachment[];
     departmentAssigned: boolean;
     threshold: number;
@@ -69,15 +72,22 @@ onMounted(async () => {
 onBeforeUnmount(() => window.removeEventListener('scroll', updateActiveSection));
 const basic = useForm({
     section: 'basic', title: props.application?.title ?? '', category: props.application?.category ?? '',
-    contact_phone: props.application ? (props.application.contact_phone ?? '') : (props.applicantPhone ?? ''), purchase_method: props.application?.purchase_method ?? '公开招标',
+    contact_phone: props.application ? (props.application.contact_phone ?? '') : (props.applicantPhone ?? ''), purchase_method: props.application?.purchase_method ?? (props.selfPurchase ? '' : '公开招标'),
     is_special_purchase: props.application?.is_special_purchase ?? false,
     special_purchase_reason: props.application?.special_purchase_reason ?? '',
     is_non_expenditure: props.application?.is_non_expenditure ?? false,
     has_usage_department: props.application?.has_usage_department ?? false,
     usage_department_id: props.application?.usage_department_id ?? null as number | null,
     procurement_requirements: props.application?.procurement_requirements ?? '', remarks: props.application?.remarks ?? '',
+    responsible_department_id: props.application?.responsible_department_id ?? props.applicantDepartmentId,
+    reason_category: props.application?.reason_category ?? '', reason: props.application?.reason ?? '',
+    has_furniture: props.application?.has_furniture ?? false,
+    has_equipment_asset: props.application?.has_equipment_asset ?? false,
 });
+const hasResponsibleDepartment = ref(Boolean(props.application?.responsible_department_id && props.application.responsible_department_id !== props.applicantDepartmentId));
+watch(hasResponsibleDepartment, (has) => { basic.responsible_department_id = has ? null : props.applicantDepartmentId; });
 watch(() => basic.is_special_purchase, (special) => {
+    if (props.selfPurchase) return;
     basic.purchase_method = special ? '' : '公开招标';
     if (!special) basic.special_purchase_reason = '';
 });
@@ -265,12 +275,13 @@ function save(section: Tab | 'engineering') {
             if (!resolved) saveFeedback.value[section] = { state: 'error', message: '保存未完成，请检查网络后重试。', time: null };
         },
     };
-    if (props.application) form.post(`/procurement/tenders/${props.application.id}/sections`, options);
-    else form.post('/procurement/tenders/sections', options);
+    const base = props.selfPurchase ? '/procurement/applications' : '/procurement/tenders';
+    if (props.application) form.post(`${base}/${props.application.id}/sections`, options);
+    else form.post(`${base}/sections`, options);
 }
 function submit() {
     if (!props.application) return;
-    router.post(`/procurement/tenders/${props.application.id}/submit`, {}, {
+    router.post(`${props.selfPurchase ? '/procurement/applications' : '/procurement/tenders'}/${props.application.id}/submit`, {}, {
         preserveScroll: true,
         onError: (errors) => { submissionErrors.value = Object.values(errors).map(String); },
     });
@@ -370,10 +381,10 @@ async function importItems(event: Event) {
 </script>
 
 <template>
-    <Head title="统一招标申请填报" />
+    <Head :title="selfPurchase ? '部门自行采购申请填报' : '统一招标申请填报'" />
     <main class="tender-form-page w-full min-w-0 px-4 py-6 md:px-8 md:py-8">
         <header class="mb-6 border-b border-[var(--brand-border)] pb-5">
-            <h1 class="text-[18px] font-semibold text-[var(--brand-title)]">采购申请单</h1>
+            <h1 class="text-[18px] font-semibold text-[var(--brand-title)]">{{ selfPurchase ? '部门自行采购申请单' : '采购申请单' }}</h1>
             <p v-if="application?.project_number" class="mt-2 text-xs text-[var(--brand-muted)]">项目编号：{{ application.project_number }}</p>
         </header>
         <div v-if="!application" class="number-notice mb-6 flex items-start gap-3 rounded-[var(--brand-radius-md)] border p-4 text-sm" role="note"><span aria-hidden="true" class="font-bold">i</span><p><strong>项目编号自动生成</strong><br><span class="text-xs">首次保存任一模块后，系统将自动生成项目编号。</span></p></div>
@@ -399,14 +410,20 @@ async function importItems(event: Event) {
                     <div class="sm:col-span-2"><span class="label">经办人所在部门</span><div class="field read-only-value">{{ departmentName ?? '未关联部门' }}</div></div>
                 </div></div>
                 <div class="form-group"><h3>采购属性</h3><div class="form-grid">
-                    <label><span class="label">是否特殊采购</span><select v-model="basic.is_special_purchase" class="field"><option :value="false">否</option><option :value="true">是</option></select></label>
-                    <label><span class="label">拟采购方式</span><input v-if="!basic.is_special_purchase" class="field" value="公开招标" disabled /><select v-else v-model="basic.purchase_method" class="field" :class="{ 'select-placeholder': !basic.purchase_method }"><option value="">请选择</option><option>邀请招标</option><option>竞争性谈判</option><option>竞争性磋商</option><option>单一来源</option><option>询价</option><option>谈判</option><option>政采云等平台</option></select><small class="error">{{ basic.errors.purchase_method }}</small></label>
-                    <label v-if="basic.is_special_purchase" class="sm:col-span-2"><span class="label">申请特殊采购方式理由</span><textarea v-model="basic.special_purchase_reason" class="field min-h-24" /><small class="error">{{ basic.errors.special_purchase_reason }}</small></label>
-                    <label><span class="label">是否有使用部门 <span class="required">*</span></span><select v-model="basic.has_usage_department" class="field"><option :value="false">否</option><option :value="true">是</option></select></label>
-                    <label v-if="basic.has_usage_department"><span class="label">使用部门 <span class="required">*</span></span><select v-model="basic.usage_department_id" class="field" :class="{ 'select-placeholder': basic.usage_department_id === null }"><option :value="null">请选择</option><option v-for="department in departments" :key="department.id" :value="department.id">{{ department.name }}</option></select><small class="error">{{ basic.errors.usage_department_id }}</small></label>
-                    <div><div class="label"><label for="non-expenditure">是否为非支出项目 <span class="required">*</span></label><span class="help-wrap"><button type="button" class="help-trigger" aria-label="非支出项目说明">?</button><span class="help-text" role="tooltip">非支出项目指调拨、捐赠等不产生经费支付的采购事项。</span></span></div><select id="non-expenditure" v-model="basic.is_non_expenditure" class="field"><option :value="false">否</option><option :value="true">是</option></select></div>
+                    <label v-if="!selfPurchase"><span class="label">是否特殊采购</span><select v-model="basic.is_special_purchase" class="field"><option :value="false">否</option><option :value="true">是</option></select></label>
+                    <label><span class="label">拟采购方式 <span v-if="selfPurchase" class="required">*</span></span><select v-if="selfPurchase" v-model="basic.purchase_method" class="field"><option value="">请选择</option><option>谈判</option><option>询价</option><option>政采云等平台</option><option>单一来源</option></select><input v-else-if="!basic.is_special_purchase" class="field" value="公开招标" disabled /><select v-else v-model="basic.purchase_method" class="field" :class="{ 'select-placeholder': !basic.purchase_method }"><option value="">请选择</option><option>邀请招标</option><option>竞争性谈判</option><option>竞争性磋商</option><option>单一来源</option><option>询价</option><option>谈判</option><option>政采云等平台</option></select><small class="error">{{ basic.errors.purchase_method }}</small></label>
+                    <label v-if="!selfPurchase && basic.is_special_purchase" class="sm:col-span-2"><span class="label">申请特殊采购方式理由</span><textarea v-model="basic.special_purchase_reason" class="field min-h-24" /><small class="error">{{ basic.errors.special_purchase_reason }}</small></label>
+                    <template v-if="selfPurchase">
+                        <label><span class="label">是否有经费归口部门 <span class="required">*</span></span><select v-model="hasResponsibleDepartment" class="field"><option :value="false">否（按经办人所在部门）</option><option :value="true">是</option></select></label>
+                        <label v-if="hasResponsibleDepartment"><span class="label">归口管理部门 <span class="required">*</span></span><select v-model="basic.responsible_department_id" class="field"><option :value="null">请选择</option><option v-for="department in responsibleDepartments" :key="department.label" :value="department.id" :disabled="department.id === null">{{ department.label }}{{ department.id === null ? '（组织库中未匹配）' : '' }}</option></select><small class="error">{{ basic.errors.responsible_department_id }}</small></label>
+                        <label><span class="label">含家具采购</span><select v-model="basic.has_furniture" class="field"><option :value="false">否</option><option :value="true">是</option></select></label>
+                        <label><span class="label">含设备固定资产采购</span><select v-model="basic.has_equipment_asset" class="field"><option :value="false">否</option><option :value="true">是</option></select></label>
+                    </template>
+                    <template v-else><label><span class="label">是否有使用部门 <span class="required">*</span></span><select v-model="basic.has_usage_department" class="field"><option :value="false">否</option><option :value="true">是</option></select></label><label v-if="basic.has_usage_department"><span class="label">使用部门 <span class="required">*</span></span><select v-model="basic.usage_department_id" class="field" :class="{ 'select-placeholder': basic.usage_department_id === null }"><option :value="null">请选择</option><option v-for="department in departments" :key="department.id" :value="department.id">{{ department.name }}</option></select><small class="error">{{ basic.errors.usage_department_id }}</small></label><div><span class="label">是否为非支出项目 <span class="required">*</span></span><select v-model="basic.is_non_expenditure" class="field"><option :value="false">否</option><option :value="true">是</option></select></div></template>
                 </div></div>
                 <div class="form-group"><h3>采购要求与备注</h3><div class="space-y-5">
+                    <label v-if="selfPurchase" class="block"><span class="label">采购理由 <span class="required">*</span></span><select v-model="basic.reason_category" class="field"><option value="">请选择</option><option>原采购（服务）合同到期，需重新采购</option><option>原设备损坏或已无法满足现有需求，需重新采购</option><option>因会议或活动（课题等）需要，申请采购（列明会议活动或课题名称及内容）</option><option>上述都不是，请自行列明</option></select><small class="error">{{ basic.errors.reason_category }}</small></label>
+                    <label v-if="selfPurchase" class="block"><span class="label">理由说明{{ basic.reason_category === '上述都不是，请自行列明' ? ' *' : '' }}</span><textarea v-model="basic.reason" class="field min-h-24" placeholder="说明具体背景与用途；选择“上述都不是”时必填" /><small class="error">{{ basic.errors.reason }}</small></label>
                     <label class="block"><span class="label">采购要求（评标、供货、质保等） <span class="required">*</span></span><textarea v-model="basic.procurement_requirements" class="field min-h-36" rows="6" /><small class="error">{{ basic.errors.procurement_requirements }}</small></label>
                     <label class="block"><span class="label">备注</span><textarea v-model="basic.remarks" class="field min-h-28" rows="4" /></label>
                 </div></div>
@@ -416,6 +433,7 @@ async function importItems(event: Event) {
         </section>
         <section v-if="basic.category === '工程类'" id="items" class="panel">
             <h2 class="section-title">采购清单 · 工程类</h2>
+            <p v-if="selfPurchase" class="mb-5 rounded-[var(--brand-radius-md)] border border-[var(--brand-warning)] bg-[var(--brand-soft)] p-4 text-sm text-[var(--brand-warning)]">工程（维修）项目须按《浙江财经大学东方学院修缮工程管理办法（试行）》办理，并报招标办备案。</p>
             <div class="space-y-5">
                 <label class="block"><span class="label">工程名称 <span class="required">*</span></span><input v-model="engineeringForm.project_name" class="field" /><small class="error">{{ engineeringForm.errors.project_name }}</small></label>
                 <label class="block"><span class="label">项目建设内容 <span class="required">*</span></span><textarea v-model="engineeringForm.construction_content" class="field min-h-28" placeholder="面积、层数、结构、维修改造的具体内容等" /><small class="error">{{ engineeringForm.errors.construction_content }}</small></label>
@@ -548,7 +566,7 @@ async function importItems(event: Event) {
         </section>
         <div v-if="Object.keys(page.props.errors ?? {}).length" class="mt-6 rounded border border-[var(--brand-danger)] p-4 text-sm text-[var(--brand-danger)]"><p v-for="(message, key) in page.props.errors" :key="key">{{ message }}</p></div>
         <footer class="form-action-bar flex flex-wrap items-center justify-between gap-3 rounded-[var(--brand-radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-card)] p-3 shadow-[var(--brand-shadow)] md:px-6">
-            <div class="text-xs text-[var(--brand-muted)]"><p>当前模块：{{ tabs.find((entry) => entry.key === tab)?.label }} · {{ application ? '各模块分别保存' : '先保存任一模块以生成草稿' }}</p><p v-if="total < threshold" class="text-[var(--brand-warning)]">统一招标金额门槛：¥{{ money(threshold) }}</p></div>
+            <div class="text-xs text-[var(--brand-muted)]"><p>当前模块：{{ tabs.find((entry) => entry.key === tab)?.label }} · {{ application ? '各模块分别保存' : '先保存任一模块以生成草稿' }}</p><p v-if="selfPurchase && total >= threshold" class="text-[var(--brand-warning)]">已达统一采购金额：¥{{ money(threshold) }}</p><p v-else-if="!selfPurchase && total < threshold" class="text-[var(--brand-warning)]">统一采购金额门槛：¥{{ money(threshold) }}</p></div>
             <div class="flex flex-wrap items-center gap-2"><Link href="/procurement/applications" class="action">返回申请列表</Link><button type="button" class="action" :disabled="activeSaving || !departmentAssigned" @click="saveCurrentSection">{{ activeSaving ? '保存中…' : '保存当前模块（草稿）' }}</button><button type="button" class="save mt-0" :disabled="activeSaving || !departmentAssigned || !application" @click="submit">提交审核</button></div>
         </footer>
     </main>
