@@ -84,6 +84,7 @@ const props = defineProps<{
         status: string;
     } | null;
     canArchive: boolean;
+    canEditExecution: boolean;
     missingArchiveMaterials: string[];
     currentUserId: number;
     canManageApprovals: boolean;
@@ -157,6 +158,7 @@ function archiveProject() {
 }
 
 const archiveKindLabel: Record<string, string> = {
+    purchase_process: '采购过程文件',
     contract: '合同',
     result_announcement: '结果公告',
     acceptance: '验收材料',
@@ -473,7 +475,7 @@ const longFields = computed(() => [
                     class="rounded-[var(--brand-radius-md)] border border-[var(--brand-primary)] bg-[var(--brand-primary-light)] p-[var(--brand-space-24)]"
                 >
                     <h2 class="font-sans text-lg text-[var(--brand-title)]">
-                        采购执行
+                        {{ application.application_form === 'self_purchase' ? '采购结果' : '采购执行' }}
                     </h2>
                     <p
                         v-if="execution?.supplier"
@@ -494,7 +496,7 @@ const longFields = computed(() => [
                     <Link
                         :href="`/procurement/applications/${application.id}/execution`"
                         class="mt-[var(--brand-space-16)] inline-block text-sm font-semibold text-[var(--brand-primary)] underline"
-                        >查看执行登记 →</Link
+                        >{{ application.application_form === 'self_purchase' ? (canEditExecution ? '登记采购结果' : '查看采购结果') : '查看执行登记' }} →</Link
                     >
                     <div
                         v-if="

@@ -84,7 +84,7 @@ class ArchiveTest extends TestCase
         $outsider = $this->user('后勤处');
         $id = $this->application($applicant);
         $fileIds = [];
-        foreach (['contract', 'result_announcement', 'acceptance', 'invoice'] as $kind) {
+        foreach (['contract', 'purchase_process', 'acceptance', 'invoice'] as $kind) {
             $fileIds[] = $this->attachment($id, $applicant, $kind);
         }
         $this->actingAs($outsider)->post(route('procurement.archives.store', $id))->assertForbidden();
@@ -178,7 +178,7 @@ class ArchiveTest extends TestCase
         Storage::fake('local');
         $applicant = $this->user('信息中心');
         $id = $this->application($applicant);
-        foreach (['contract', 'result_announcement', 'acceptance', 'invoice'] as $kind) {
+        foreach (['contract', 'purchase_process'] as $kind) {
             $this->attachment($id, $applicant, $kind);
         }
         $this->actingAs($applicant)->post(route('procurement.archives.store', $id))->assertRedirect();
@@ -192,7 +192,7 @@ class ArchiveTest extends TestCase
         Storage::fake('local');
         $applicant = $this->user('信息中心');
         $id = $this->application($applicant);
-        foreach (['contract', 'result_announcement', 'acceptance', 'invoice'] as $kind) {
+        foreach (['contract', 'purchase_process'] as $kind) {
             $this->attachment($id, $applicant, $kind);
         }
         Storage::disk('local')->delete("procurement/{$id}/contract.pdf");
@@ -200,5 +200,25 @@ class ArchiveTest extends TestCase
         $this->actingAs($applicant)->post(route('procurement.archives.store', $id))
             ->assertSessionHasErrors('materials');
         $this->assertDatabaseCount('procurement_archives', 0);
+    }
+
+    public function test_registration_upgrade_preserves_customized_rules_and_archived_snapshot(): void
+    {
+        $admin = $this->user('采购处', 'system_admin');
+        $id = $this->application($admin);
+        DB::table('procurement_archives')->insert([
+            'application_id' => $id, 'archived_by' => $admin->id, 'archived_at' => now(),
+            'required_kinds_snapshot' => '["contract","result_announcement"]', 'attachment_ids_snapshot' => '[]',
+        ]);
+        $migration = require database_path('migrations/2026_11_20_000000_add_self_purchase_result_registration.php');
+        $migration->down();
+        $rules = DB::table('procurement_archive_rules')->where('application_form', 'self_purchase');
+        (clone $rules)->where('kind', 'invoice')->update(['required' => false, 'updated_by' => $admin->id]);
+
+        $migration->up();
+
+        $this->assertEquals(['acceptance', 'contract', 'result_announcement'], (clone $rules)->where('required', true)->orderBy('kind')->pluck('kind')->all());
+        $this->assertDatabaseHas('procurement_archive_rules', ['application_form' => 'self_purchase', 'kind' => 'purchase_process', 'required' => false]);
+        $this->assertSame('["contract","result_announcement"]', DB::table('procurement_archives')->where('application_id', $id)->value('required_kinds_snapshot'));
     }
 }

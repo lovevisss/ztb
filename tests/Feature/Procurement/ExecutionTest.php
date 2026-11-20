@@ -34,15 +34,15 @@ class ExecutionTest extends TestCase
             ]);
         }
 
-        return $user;
+        return $user->refresh();
     }
 
-    private function application(User $applicant, string $status = 'approved'): int
+    private function application(User $applicant, string $status = 'approved', string $form = 'central_tender'): int
     {
         $id = DB::table('procurement_applications')->insertGetId([
             'applicant_id' => $applicant->id,
             'department_id' => $applicant->department_id,
-            'application_form' => 'self_purchase',
+            'application_form' => $form,
             'title' => '设备采购',
             'budget_cents' => 9_000_000,
             'status' => $status,
@@ -174,5 +174,63 @@ class ExecutionTest extends TestCase
         $this->actingAs($applicant)->put(route('procurement.executions.save', $submitted), ['intent' => 'draft'])->assertForbidden();
         $this->actingAs($colleague)->put(route('procurement.executions.save', $approved), ['intent' => 'draft'])->assertForbidden();
         $this->actingAs($applicant)->put(route('procurement.executions.save', $archived), ['intent' => 'draft'])->assertForbidden();
+    }
+
+    public function test_self_purchase_uses_shared_supplier_and_preserves_its_snapshot_through_archive(): void
+    {
+        $owner = $this->user($this->department('资产处'));
+        $applicant = $this->user($this->department('信息中心'));
+        $manager = $this->user($owner->department_id, 'procurement_manager');
+        $supplier = ['name' => '共享供应商', 'contact_name' => '原联系人', 'contact_phone' => '0571-12345678'];
+        $this->actingAs($owner)->post(route('procurement.suppliers.store'), $supplier)
+            ->assertRedirect(route('procurement.suppliers.index'))->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('procurement_suppliers', 1);
+        $this->actingAs($applicant)->post(route('procurement.suppliers.store'), $supplier)
+            ->assertRedirect()->assertSessionHasErrors('name');
+        $supplierId = DB::table('procurement_suppliers')->value('id');
+        $update = [...$supplier, 'contact_name' => '新联系人'];
+        $this->actingAs($applicant)->put(route('procurement.suppliers.update', $supplierId), $update)->assertForbidden();
+        $this->actingAs($applicant)->get(route('procurement.suppliers.index'))
+            ->assertInertia(fn ($page) => $page->component('procurement/Suppliers')
+                ->where('suppliers.data.0.name', $supplier['name'])->where('suppliers.data.0.can_edit', false));
+
+        $id = $this->application($applicant, form: 'self_purchase');
+        $this->actingAs($manager)->put(route('procurement.suppliers.status', $supplierId), ['is_active' => false])->assertSessionHasNoErrors();
+        $execution = route('procurement.executions.save', $id);
+        $this->actingAs($applicant)->put($execution, $this->completeFields())->assertSessionHasErrors('supplier_id');
+        $fields = [...$this->completeFields(), 'supplier_id' => $supplierId];
+        $this->actingAs($applicant)->put($execution, $fields)->assertSessionHasErrors('supplier_id');
+        $this->actingAs($manager)->put(route('procurement.suppliers.status', $supplierId), ['is_active' => true])->assertSessionHasNoErrors();
+        $this->actingAs($applicant)->put($execution, [
+            ...$fields, 'contract_document' => UploadedFile::fake()->create('合同.pdf', 10, 'application/pdf'),
+        ])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('procurement_executions', [
+            'application_id' => $id, 'supplier_id' => $supplierId, 'supplier' => $supplier['name'],
+            'supplier_contact_name' => $supplier['contact_name'], 'supplier_contact_phone' => $supplier['contact_phone'],
+        ]);
+        $this->actingAs($applicant)->post(route('procurement.archives.store', $id))->assertSessionHasErrors('materials');
+        $this->actingAs($owner)->put(route('procurement.suppliers.update', $supplierId), $update)->assertSessionHasNoErrors();
+        $this->actingAs($applicant)->put($execution, [
+            ...$fields, 'purchase_process_documents' => [UploadedFile::fake()->create('询价记录.pdf', 10, 'application/pdf')],
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($applicant)->post(route('procurement.archives.store', $id))->assertRedirect(route('procurement.archives.show', $id));
+        $this->actingAs($applicant)->get(route('procurement.archives.show', $id))
+            ->assertInertia(fn ($page) => $page->where('execution.supplier_contact_name', $supplier['contact_name'])
+                ->where('attachments.1.kind', 'purchase_process'));
+    }
+
+    public function test_old_self_purchase_result_remains_readable_and_needs_a_supplier_when_edited(): void
+    {
+        $applicant = $this->user($this->department('信息中心'));
+        $id = $this->application($applicant, 'execution_completed', 'self_purchase');
+        DB::table('procurement_executions')->insert([
+            'application_id' => $id, 'supplier' => '原自由填写供应商', 'status' => 'completed',
+        ]);
+
+        $this->actingAs($applicant)->get(route('procurement.executions.show', $id))
+            ->assertInertia(fn ($page) => $page->where('execution.supplier', '原自由填写供应商')->where('execution.supplier_id', null));
+        $this->actingAs($applicant)->put(route('procurement.executions.save', $id), $this->completeFields())
+            ->assertSessionHasErrors('supplier_id');
+        $this->assertDatabaseHas('procurement_executions', ['application_id' => $id, 'supplier' => '原自由填写供应商']);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ProcurementApplication;
 use App\Models\ProcurementAttachment;
 use App\Models\ProcurementExecution;
+use App\Models\ProcurementSupplier;
 use App\Services\ProcurementAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
@@ -23,13 +25,20 @@ class ProcurementExecutionController extends Controller
         abort_unless(in_array($application->status, ['approved', 'executing', 'execution_completed', 'archived'], true), 403);
         abort_unless($access->canView($request->user(), $application), 403);
 
+        $self = $application->application_form === 'self_purchase';
+        $canEdit = $application->status !== 'archived' && $access->canExecute($request->user(), $application);
+        $execution = ProcurementExecution::query()->where('application_id', $application->id)->first();
+
         return Inertia::render('procurement/ExecutionForm', [
             'application' => $application,
-            'execution' => ProcurementExecution::query()->where('application_id', $application->id)->first(),
+            'execution' => $execution,
+            'registeredAt' => $execution?->registered_at?->format('Y-m-d H:i:s'),
             'attachments' => ProcurementAttachment::query()->where('application_id', $application->id)
-                ->whereIn('kind', ['contract', 'result_announcement', 'acceptance', 'invoice', 'other_execution'])
+                ->whereIn('kind', ['contract', 'result_announcement', 'acceptance', 'invoice', 'other_execution', ...($self ? ['purchase_process'] : [])])
                 ->get(['id', 'kind', 'original_name', 'size', 'mime_type']),
-            'canEdit' => $application->status !== 'archived' && $access->canExecute($request->user(), $application),
+            'canEdit' => $canEdit,
+            'suppliers' => $self && $canEdit ? ProcurementSupplier::query()->where('is_active', true)
+                ->orderBy('name')->get(['id', 'name', 'contact_name', 'contact_phone']) : [],
         ]);
     }
 
@@ -38,34 +47,26 @@ class ProcurementExecutionController extends Controller
         $this->authorizeEditable($request, $application, $access);
 
         $intent = $request->validate(['intent' => ['required', 'in:draft,complete']])['intent'];
-        $required = $intent === 'complete' || $application->status === 'execution_completed' ? 'required' : 'nullable';
-        $data = $request->validate([
-            'actual_amount' => [$required, 'numeric', 'min:0.01', 'decimal:0,2'],
-            'supplier' => [$required, 'string', 'max:255'],
-            'completed_on' => [$required, 'date_format:Y-m-d'],
-            'result_note' => [$required, 'string'],
+        $request->validate([
             'contract_document' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:20480'],
             'result_announcement_document' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:20480'],
             'acceptance_document' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:20480'],
             'invoice_document' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:20480'],
             'other_execution_documents' => ['nullable', 'array', 'max:10'],
             'other_execution_documents.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:20480'],
+            'purchase_process_documents' => [$application->application_form === 'self_purchase' ? 'nullable' : 'prohibited', 'array', 'max:10'],
+            'purchase_process_documents.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:20480'],
         ]);
-
-        $data['actual_amount_cents'] = isset($data['actual_amount']) ? (int) round((float) $data['actual_amount'] * 100) : null;
-        unset(
-            $data['actual_amount'], $data['contract_document'], $data['result_announcement_document'],
-            $data['acceptance_document'], $data['invoice_document'], $data['other_execution_documents']
-        );
 
         $storedPaths = [];
         try {
-            DB::transaction(function () use ($request, $application, $access, $intent, $data, &$storedPaths) {
+            DB::transaction(function () use ($request, $application, $access, $intent, &$storedPaths) {
                 $locked = ProcurementApplication::query()->lockForUpdate()->findOrFail($application->id);
                 $this->authorizeEditable($request, $locked, $access);
 
                 $execution = ProcurementExecution::query()->firstOrNew(['application_id' => $locked->id]);
                 $completed = $intent === 'complete' || $locked->status === 'execution_completed';
+                $data = $this->resultData($request, $locked, $execution, $completed);
                 $execution->fill([
                     ...$data,
                     'status' => $completed ? 'completed' : 'draft',
@@ -90,6 +91,37 @@ class ProcurementExecutionController extends Controller
         }
 
         return to_route('procurement.applications.show', $application->id);
+    }
+
+    private function resultData(Request $request, ProcurementApplication $application, ProcurementExecution $execution, bool $completed): array
+    {
+        $required = $completed ? 'required' : 'nullable';
+        $self = $application->application_form === 'self_purchase';
+        $data = $request->validate([
+            'actual_amount' => [$required, 'numeric', 'min:0.01', 'decimal:0,2'],
+            'completed_on' => [$required, 'date_format:Y-m-d'],
+            'result_note' => [$required, 'string'],
+            ...($self ? ['supplier_id' => [$required, 'integer']] : ['supplier' => [$required, 'string', 'max:255']]),
+        ]);
+        $data['actual_amount_cents'] = isset($data['actual_amount']) ? (int) round((float) $data['actual_amount'] * 100) : null;
+        unset($data['actual_amount']);
+
+        if ($self && isset($data['supplier_id'])) {
+            $sameSupplier = (int) $execution->supplier_id === (int) $data['supplier_id'];
+            if (! $sameSupplier || $execution->status !== 'completed') {
+                $supplier = ProcurementSupplier::query()->whereKey($data['supplier_id'])->where('is_active', true)->lockForUpdate()->first();
+                if ($supplier === null) {
+                    throw ValidationException::withMessages(['supplier_id' => '请选择启用的供应商。']);
+                }
+                $data['supplier'] = $supplier->name;
+                $data['supplier_contact_name'] = $supplier->contact_name;
+                $data['supplier_contact_phone'] = $supplier->contact_phone;
+            }
+        } elseif ($self && array_key_exists('supplier_id', $data) && $execution->supplier_id !== null) {
+            $data['supplier'] = $data['supplier_contact_name'] = $data['supplier_contact_phone'] = null;
+        }
+
+        return $data;
     }
 
     public function assign(Request $request, ProcurementApplication $application): RedirectResponse
@@ -140,6 +172,9 @@ class ProcurementExecutionController extends Controller
 
         foreach ($request->file('other_execution_documents', []) as $file) {
             $this->storeAttachment($file, 'other_execution', $request, $application, $storedPaths);
+        }
+        foreach ($request->file('purchase_process_documents', []) as $file) {
+            $this->storeAttachment($file, 'purchase_process', $request, $application, $storedPaths);
         }
     }
 

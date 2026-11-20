@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { ElCheckbox, ElCheckboxGroup } from 'element-plus';
 
 type Rule = {
     id: number;
@@ -9,7 +10,7 @@ type Rule = {
 };
 const props = defineProps<{
     rules: Rule[];
-    kinds: string[];
+    kinds: Record<string, string[]>;
     canEdit: boolean;
 }>();
 const labels: Record<string, string> = {
@@ -18,6 +19,7 @@ const labels: Record<string, string> = {
     acceptance: '验收材料',
     invoice: '发票',
     other_execution: '其他执行材料',
+    purchase_process: '采购过程文件',
 };
 const forms = [
     { code: 'self_purchase', label: '部门自行采购' },
@@ -90,9 +92,8 @@ function save(applicationForm: string) {
                     class="mt-[var(--brand-space-24)] flex flex-col gap-[var(--brand-space-16)]"
                 >
                     <el-checkbox
-                        v-for="kind in kinds"
+                        v-for="kind in kinds[item.code]"
                         :key="kind"
-                        :label="kind"
                         :value="kind"
                         >{{ labels[kind] ?? kind }}</el-checkbox
                     >

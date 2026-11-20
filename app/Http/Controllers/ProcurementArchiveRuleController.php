@@ -19,7 +19,10 @@ class ProcurementArchiveRuleController extends Controller
 
         return Inertia::render('procurement/ArchiveRules', [
             'rules' => DB::table('procurement_archive_rules')->orderBy('application_form')->orderBy('id')->get(),
-            'kinds' => self::KINDS,
+            'kinds' => [
+                'self_purchase' => [...self::KINDS, 'purchase_process'],
+                'central_tender' => self::KINDS,
+            ],
             'canEdit' => $request->user()->hasAnyRole(['system_admin']),
         ]);
     }
@@ -27,14 +30,15 @@ class ProcurementArchiveRuleController extends Controller
     public function update(Request $request): RedirectResponse
     {
         abort_unless($request->user()->hasAnyRole(['system_admin']), 403);
+        $kinds = $request->input('application_form') === 'self_purchase' ? [...self::KINDS, 'purchase_process'] : self::KINDS;
         $data = $request->validate([
             'application_form' => ['required', Rule::in(['self_purchase', 'central_tender'])],
             'required_kinds' => ['present', 'array'],
-            'required_kinds.*' => ['string', Rule::in(self::KINDS), 'distinct'],
+            'required_kinds.*' => ['string', Rule::in($kinds), 'distinct'],
         ]);
 
-        DB::transaction(function () use ($request, $data) {
-            foreach (self::KINDS as $kind) {
+        DB::transaction(function () use ($request, $data, $kinds) {
+            foreach ($kinds as $kind) {
                 DB::table('procurement_archive_rules')
                     ->where('application_form', $data['application_form'])
                     ->where('kind', $kind)

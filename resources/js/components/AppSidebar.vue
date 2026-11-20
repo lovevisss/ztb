@@ -48,6 +48,11 @@ const mainNavItems: NavItem[] = [
         icon: IconHistory,
     },
     {
+        title: '供应商库',
+        href: '/procurement/suppliers',
+        icon: IconUsers,
+    },
+    {
         title: '采购统计',
         href: '/procurement/statistics',
         icon: IconChartBar,

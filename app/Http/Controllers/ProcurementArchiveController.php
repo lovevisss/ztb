@@ -48,7 +48,13 @@ class ProcurementArchiveController extends Controller
             $presentKinds = $available->pluck('kind')->unique()->all();
             $missing = array_values(array_diff($requiredKinds, $presentKinds));
             if ($missing !== []) {
-                throw ValidationException::withMessages(['materials' => '缺少必需归档材料：'.implode('、', $missing)]);
+                $labels = [
+                    'contract' => '采购合同', 'result_announcement' => '结果公告', 'acceptance' => '验收材料',
+                    'invoice' => '发票', 'other_execution' => '其他执行材料', 'purchase_process' => '采购过程文件',
+                ];
+                throw ValidationException::withMessages([
+                    'materials' => '缺少必需归档材料：'.implode('、', array_map(fn ($kind) => $labels[$kind] ?? $kind, $missing)),
+                ]);
             }
 
             DB::table('procurement_archives')->insert([

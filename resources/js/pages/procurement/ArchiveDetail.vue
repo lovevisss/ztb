@@ -42,6 +42,9 @@ defineProps<{
     execution: {
         actual_amount_cents: number;
         supplier: string;
+        supplier_contact_name: string | null;
+        supplier_contact_phone: string | null;
+        registered_at: string | null;
         completed_on: string;
         result_note: string;
     };
@@ -56,6 +59,7 @@ const kindLabels: Record<string, string> = {
     acceptance: '验收材料',
     invoice: '发票',
     other_execution: '其他执行材料',
+    purchase_process: '采购过程文件',
     requirement: '采购需求',
     budget_basis: '预算依据',
 };
@@ -151,6 +155,18 @@ const kindLabels: Record<string, string> = {
                         >
                             {{ execution.supplier }}
                         </dd>
+                    </div>
+                    <div v-if="execution.supplier_contact_name">
+                        <dt class="text-[var(--brand-muted)]">供应商联系人</dt>
+                        <dd class="mt-2 break-words text-[var(--brand-title)]">{{ execution.supplier_contact_name }}</dd>
+                    </div>
+                    <div v-if="execution.supplier_contact_phone">
+                        <dt class="text-[var(--brand-muted)]">供应商联系电话</dt>
+                        <dd class="mt-2 break-words text-[var(--brand-title)]">{{ execution.supplier_contact_phone }}</dd>
+                    </div>
+                    <div v-if="application.application_form === 'self_purchase' && execution.registered_at">
+                        <dt class="text-[var(--brand-muted)]">登记时间</dt>
+                        <dd class="mt-2 text-[var(--brand-title)]">{{ execution.registered_at.slice(0, 19) }}</dd>
                     </div>
                 </dl>
                 <p

@@ -8,7 +8,7 @@ class ProcurementExecution extends Model
 {
     protected $fillable = [
         'application_id', 'actual_amount_cents', 'supplier', 'completed_on',
-        'result_note', 'status', 'registered_at',
+        'result_note', 'status', 'registered_at', 'supplier_id', 'supplier_contact_name', 'supplier_contact_phone',
     ];
 
     protected function casts(): array

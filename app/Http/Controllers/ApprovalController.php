@@ -111,6 +111,8 @@ class ApprovalController extends Controller
             'usageDepartmentName' => $application->usage_department_id === null ? null : DB::table('departments')->where('id', $application->usage_department_id)->value('name'),
             'execution' => DB::table('procurement_executions')->where('application_id', $application->id)->first(),
             'canArchive' => $application->status === 'execution_completed' && $access->canExecute($request->user(), $application),
+            'canEditExecution' => in_array($application->status, ['approved', 'executing', 'execution_completed'], true)
+                && $access->canExecute($request->user(), $application),
             'missingArchiveMaterials' => $application->status === 'execution_completed'
                 ? array_values(array_diff(
                     DB::table('procurement_archive_rules')->where('application_form', $application->application_form)->where('required', true)->pluck('kind')->all(),
